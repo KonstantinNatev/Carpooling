@@ -1,0 +1,337 @@
+import { legendTemplate } from "./templates/legend/legendTemplate.js";
+import { popUpTemplate } from "./templates/popUp/popUpTemplate.js";
+
+const map = L.map("map").setView([42.6977, 23.3219], 13);
+
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "&copy; OpenStreetMap contributors",
+}).addTo(map);
+
+let highlightedRoute = null;
+let startMarker = null;
+let endMarker = null;
+let geoLayer = null;
+let selectedRouteLabel = "";
+
+const blueIcon = new L.Icon({
+  iconUrl: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+});
+
+const redIcon = new L.Icon({
+  iconUrl: "https://maps.gstatic.com/mapfiles/ms2/micons/red-dot.png",
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+});
+
+const clearMapHighlights = () => {
+  if (highlightedRoute) map.removeLayer(highlightedRoute);
+  if (startMarker) map.removeLayer(startMarker);
+  if (endMarker) map.removeLayer(endMarker);
+  highlightedRoute = startMarker = endMarker = null;
+  selectedRouteLabel = "";
+  updateDynamicLegend([]);
+};
+
+const getRouteColor = (count) => {
+  if (count === 1) return "#004aad";
+  if (count === 2) return "#28a745";
+  if (count === 3) return "#ffc107";
+  if (count >= 4) return "#dc3545";
+  return "#6c757d";
+};
+
+const updateDynamicLegend = (routeColorPairs) => {
+  const legendRoutes = document.getElementById("legend-routes");
+  if (!legendRoutes) return;
+  const selected = selectedRouteLabel
+    ? `<div style="margin-bottom:4px;"><strong style="color:#004aad;">✅ ${selectedRouteLabel}</strong></div>`
+    : "";
+  const hoverList = routeColorPairs
+    .map(
+      ([color, label]) => `
+      <div>
+        <span style="display:inline-block; width:16px; height:10px; background:${color}; margin-right:6px;"></span>
+        ${label}
+      </div>`
+    )
+    .join("");
+  legendRoutes.innerHTML = selected + hoverList;
+};
+
+const colorPalette = [
+  "#e41a1c",
+  "#377eb8",
+  "#4daf4a",
+  "#984ea3",
+  "#ff7f00",
+  "#ffff33",
+  "#a65628",
+  "#f781bf",
+  "#999999",
+];
+
+document.addEventListener("click", function (event) {
+  const target = event.target;
+  if (target && target.id === "btn-schedule-view") {
+    const panelContent = target.getAttribute("data-schedule-html");
+    if (panelContent) {
+      showSchedulePanel(panelContent);
+    }
+  }
+});
+
+function showSchedulePanel(encodedHtml) {
+  const panel = document.getElementById("schedule-panel");
+  const content = document.getElementById("schedule-content");
+
+  if (!panel || !content) {
+    console.warn("Липсва елемент с ID schedule-panel или schedule-content.");
+    return;
+  }
+
+  content.innerHTML = decodeURIComponent(encodedHtml);
+  panel.style.display = "block";
+}
+
+async function loadAllScrapedRoutes() {
+  try {
+    const res = await fetch("/schedules/index.json");
+    const files = await res.json();
+    const allStops = [];
+    const allRoutes = [];
+
+    for (const file of files) {
+      const data = await fetch(`/schedules/${file}`).then((r) => r.json());
+      const routes = data.routes || [];
+
+      for (const route of routes) {
+        if (!route?.details?.polyline) continue;
+
+        const stops = route?.segments?.map((s) => s.stop).filter(Boolean) || [];
+        const lineName = data.line?.name || "";
+        const refId = `relation/${data.line?.id}`;
+        const from = route?.details?.from || "-";
+        const to = route?.details?.to || "-";
+        const type = data.line.tr_name;
+        const direction = route.name;
+        const polyline = route?.details?.polyline || "";
+
+        const coords = polyline
+          .replace("LINESTRING (", "")
+          .replace(")", "")
+          .split(", ")
+          .map((pair) => {
+            const [lng, lat] = pair.split(" ").map(Number);
+            return [lat, lng];
+          });
+
+        const geometry = {
+          type: "LineString",
+          coordinates: coords.map(([lat, lng]) => [lng, lat]),
+        };
+
+        allRoutes.push({
+          type: "Feature",
+          geometry,
+          properties: {
+            ref: lineName,
+            direction,
+            type,
+            "@id": `${refId}_${route.id}`,
+            tr_color: data.line?.tr_color || "#888",
+            tr_icon: data.line?.tr_icon || "",
+            line_id: data.line?.id,
+            route_id: route?.id,
+            from,
+            to,
+          },
+        });
+
+        for (const stop of stops) {
+          const lat = parseFloat(stop.latitude);
+          const lng = parseFloat(stop.longitude);
+
+          const existing = allStops.find((s) => {
+            const [sLng, sLat] = s.geometry.coordinates;
+            return (
+              Math.abs(sLat - lat) < 0.00001 && Math.abs(sLng - lng) < 0.00001
+            );
+          });
+
+          const scheduleMap = {};
+          for (const timeEntry of stop.times || []) {
+            const label = timeEntry.code || "Няма етикет";
+            if (!scheduleMap[label]) scheduleMap[label] = new Set();
+            scheduleMap[label].add(timeEntry.time);
+          }
+
+          const relation = {
+            rel: data.line?.id,
+            ref: data.line?.name,
+            direction: route.name,
+            stop_id: stop.id,
+            schedule: Object.entries(scheduleMap).map(([label, times]) => ({
+              label,
+              times: Array.from(times).sort(),
+            })),
+          };
+
+          if (existing) {
+            if (
+              !existing.properties["@relations"].some(
+                (r) => r.rel === relation.rel
+              )
+            ) {
+              existing.properties["@relations"].push(relation);
+            }
+          } else {
+            allStops.push({
+              type: "Feature",
+              geometry: {
+                type: "Point",
+                coordinates: [lng, lat],
+              },
+              properties: {
+                name: stop.name,
+                "@relations": [relation],
+              },
+            });
+          }
+        }
+      }
+    }
+
+    const data = { features: [...allStops, ...allRoutes] };
+    renderMapData(data);
+  } catch (err) {
+    console.error("Грешка при зареждане на JSON файловете:", err);
+  }
+}
+
+function renderMapData(data) {
+  const stops = data.features.filter((f) => f.geometry.type === "Point");
+  const routes = data.features.filter((f) => f.geometry.type.includes("Line"));
+
+  geoLayer = L.geoJSON(routes, {
+    style: { color: "#888", weight: 2, opacity: 0.5 },
+    onEachFeature: (feature, layer) => {
+      layer.feature = feature;
+    },
+  }).addTo(map);
+
+  window.allRoutes = routes;
+  window.highlightRoute = (routeId) => {
+    clearMapHighlights();
+    const selectedRoute = window.allRoutes.find(
+      (r) => r.properties?.["@id"] === routeId
+    );
+    if (!selectedRoute) return;
+
+    const color = selectedRoute.properties.tr_color || getRouteColor(1);
+
+    highlightedRoute = L.geoJSON(selectedRoute.geometry, {
+      style: { color, weight: 6, opacity: 1 },
+    }).addTo(map);
+
+    const coords = turf.getCoords(selectedRoute.geometry);
+    const [firstCoord, lastCoord] =
+      selectedRoute.geometry.type === "LineString"
+        ? [coords[0], coords[coords.length - 1]]
+        : (() => {
+            const longest = coords.sort((a, b) => b.length - a.length)[0];
+            return [longest[0], longest[longest.length - 1]];
+          })();
+
+    startMarker = L.marker([firstCoord[1], firstCoord[0]], {
+      icon: blueIcon,
+    }).addTo(map);
+    endMarker = L.marker([lastCoord[1], lastCoord[0]], { icon: redIcon }).addTo(
+      map
+    );
+
+    const { ref = "?", from = "-", to = "-" } = selectedRoute.properties;
+    selectedRouteLabel = `Маршрут ${ref}: ${selectedRoute.properties.direction}`;
+    updateDynamicLegend([]);
+  };
+
+  stops.forEach((stop) => {
+    const latlng = L.latLng(
+      stop.geometry.coordinates[1],
+      stop.geometry.coordinates[0]
+    );
+    const marker = L.circleMarker(latlng, {
+      radius: 5,
+      fillColor: "#ffc107",
+      color: "#343a40",
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.9,
+    }).addTo(map);
+
+    const allRelations = stop.properties?.["@relations"] || [];
+
+    marker.on("mouseover", () => {
+      const { html } = popUpTemplate(stop, routes);
+
+      marker._popup = L.popup().setLatLng(latlng).setContent(html).openOn(map);
+
+      const relIds = allRelations.map((r) => r.rel);
+      const matchedRoutes = routes.filter((r) =>
+        relIds.includes(r.properties?.line_id)
+      );
+
+      const hoverLayerGroup = L.layerGroup().addTo(map);
+      const routeColorPairs = [];
+
+      matchedRoutes.forEach((route, index) => {
+        const color = colorPalette[index % colorPalette.length];
+        const hoverLayer = L.geoJSON(route.geometry, {
+          style: { color, dashArray: "4", weight: 4, opacity: 0.8 },
+        });
+        hoverLayerGroup.addLayer(hoverLayer);
+        const { ref = "?", direction = "-" } = route.properties;
+        routeColorPairs.push([color, `Маршрут ${ref}: ${direction}`]);
+      });
+
+      updateDynamicLegend(routeColorPairs);
+
+      marker.once("mouseout", () => {
+        map.removeLayer(hoverLayerGroup);
+        updateDynamicLegend([]);
+        if (marker._popup) map.closePopup(marker._popup);
+      });
+    });
+
+    marker.on("click", () => {
+      const { html, scheduleHtml } = popUpTemplate(stop, routes);
+
+      const popup = L.popup({ closeButton: false })
+        .setLatLng(latlng)
+        .setContent(html);
+
+      popup.on("add", () => {
+        const btn = document.getElementById("btn-schedule-view");
+        if (btn) {
+          btn.addEventListener("click", () => {
+            showSchedulePanel(scheduleHtml);
+          });
+        }
+      });
+
+      popup.openOn(map);
+    });
+  });
+}
+
+const legend = L.control({ position: "bottomright" });
+legend.onAdd = function () {
+  const div = L.DomUtil.create("div", "info legend");
+  div.innerHTML = legendTemplate();
+  return div;
+};
+legend.addTo(map);
+
+loadAllScrapedRoutes();

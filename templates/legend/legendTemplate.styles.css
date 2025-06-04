@@ -1,0 +1,30 @@
+.legend-container {
+  background: white;
+  padding: 8px;
+  border-radius: 5px;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+  font-size: 13px;
+  max-width: 250px;
+}
+
+.legend-title {
+  font-weight: bold;
+}
+
+.legend-stop {
+  margin-top: 5px;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  background: #ffc107;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.legend-icon {
+  width: 12px;
+  vertical-align: middle;
+}

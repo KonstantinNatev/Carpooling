@@ -1,0 +1,48 @@
+.time-tag {
+  padding: 4px 8px;
+  background: #e0ecff;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #003366;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.schedule-block {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.schedule-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 6px;
+}
+
+.schedule-times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+
+.schedule-group {
+  margin-top: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #ccc;
+}
+
+.schedule-group-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #004aad;
+  margin-bottom: 10px;
+}
+
+.empty-state {
+  color: #999;
+}

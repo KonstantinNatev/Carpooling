@@ -1,0 +1,76 @@
+.popup-container {
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  position: relative;
+  max-width: 240px;
+}
+
+.popup-close-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #888;
+}
+
+.popup-inner {
+  padding-right: 20px;
+}
+
+.popup-title {
+  margin-bottom: 4px;
+  color: #007bff;
+  font-weight: bold;
+}
+
+.popup-subtitle {
+  color: #17a2b8;
+  font-weight: bold;
+}
+
+.line-group {
+  margin-top: 8px;
+}
+
+.line-label {
+  margin-bottom: 4px;
+  color: #28a745;
+  font-weight: bold;
+}
+
+.direction-button {
+  display: block;
+  background: #f0f0f0;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-top: 6px;
+  width: 100%;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.direction-button span {
+  font-size: 12px;
+  color: #555;
+}
+
+.schedule-label {
+  color: #6c757d;
+  font-weight: bold;
+}
+
+.schedule-btn {
+  margin-top: 10px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
