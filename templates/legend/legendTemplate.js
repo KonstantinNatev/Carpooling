@@ -1,4 +1,4 @@
-export const legendTemplate = () => {
+window.legendTemplate = () => {
   return `
     <div class="legend-container">
       <strong class="legend-title">🗺️ Легенда</strong><br>

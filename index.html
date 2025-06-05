@@ -20,10 +20,7 @@
       rel="stylesheet"
       href="./templates/schedule/scheduleTemplate.styles.css"
     />
-    <link
-      rel="stylesheet"
-      href="./templates/popUp/popUpTemplate.styles.css"
-    />
+    <link rel="stylesheet" href="./templates/popUp/popUpTemplate.styles.css" />
 
     <script
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -130,12 +127,13 @@
       <div id="schedule-content" style="margin-top: 16px"></div>
     </div>
 
-    <script
-      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-      integrity="sha512-Dv/cMXY/Hk1l/mGhl53n64U1OeJG39O2iH6jUboAVoYqCKlGfA58WfRw+HYtG8N7wE/XnD4gD+ZCwzixk7arwA=="
-      crossorigin=""
-    ></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
-    <script type="module" src="./index.js"></script>
+    <script src="./utils.js"></script>
+    <script src="./templates/legend/legendTemplate.js"></script>
+    <script src="./templates/schedule/scheduleTemplate.js"></script>
+    <script src="./templates/popUp/popUpTemplate.js"></script>
+    <script src="./index.js"></script>
   </body>
 </html>
