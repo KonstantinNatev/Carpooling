@@ -1,4 +1,4 @@
-export const scheduleTemplate = (allRelations) => {
+window.scheduleTemplate = (allRelations) => {
   if (!allRelations.length)
     return `<em class="empty-state">Няма налично разписание</em>`;
 

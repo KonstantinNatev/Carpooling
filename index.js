@@ -1,12 +1,4 @@
-import { legendTemplate } from "./templates/legend/legendTemplate.js";
-import { popUpTemplate } from "./templates/popUp/popUpTemplate.js";
-
 const map = L.map("map").setView([42.6977, 23.3219], 13);
-
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19,
-  attribution: "&copy; OpenStreetMap contributors",
-}).addTo(map);
 
 let highlightedRoute = null;
 let startMarker = null;
@@ -14,17 +6,10 @@ let endMarker = null;
 let geoLayer = null;
 let selectedRouteLabel = "";
 
-const blueIcon = new L.Icon({
-  iconUrl: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png",
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-});
-
-const redIcon = new L.Icon({
-  iconUrl: "https://maps.gstatic.com/mapfiles/ms2/micons/red-dot.png",
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-});
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "&copy; OpenStreetMap contributors",
+}).addTo(map);
 
 const clearMapHighlights = () => {
   if (highlightedRoute) map.removeLayer(highlightedRoute);
@@ -33,14 +18,6 @@ const clearMapHighlights = () => {
   highlightedRoute = startMarker = endMarker = null;
   selectedRouteLabel = "";
   updateDynamicLegend([]);
-};
-
-const getRouteColor = (count) => {
-  if (count === 1) return "#004aad";
-  if (count === 2) return "#28a745";
-  if (count === 3) return "#ffc107";
-  if (count >= 4) return "#dc3545";
-  return "#6c757d";
 };
 
 const updateDynamicLegend = (routeColorPairs) => {
@@ -60,18 +37,6 @@ const updateDynamicLegend = (routeColorPairs) => {
     .join("");
   legendRoutes.innerHTML = selected + hoverList;
 };
-
-const colorPalette = [
-  "#e41a1c",
-  "#377eb8",
-  "#4daf4a",
-  "#984ea3",
-  "#ff7f00",
-  "#ffff33",
-  "#a65628",
-  "#f781bf",
-  "#999999",
-];
 
 document.addEventListener("click", function (event) {
   const target = event.target;
@@ -230,7 +195,7 @@ function renderMapData(data) {
     );
     if (!selectedRoute) return;
 
-    const color = selectedRoute.properties.tr_color || getRouteColor(1);
+    const color = selectedRoute.properties.tr_color || window.getRouteColor(1);
 
     highlightedRoute = L.geoJSON(selectedRoute.geometry, {
       style: { color, weight: 6, opacity: 1 },
@@ -246,11 +211,12 @@ function renderMapData(data) {
           })();
 
     startMarker = L.marker([firstCoord[1], firstCoord[0]], {
-      icon: blueIcon,
+      icon: window.blueIcon,
     }).addTo(map);
-    endMarker = L.marker([lastCoord[1], lastCoord[0]], { icon: redIcon }).addTo(
-      map
-    );
+
+    endMarker = L.marker([lastCoord[1], lastCoord[0]], {
+      icon: window.redIcon,
+    }).addTo(map);
 
     const { ref = "?", from = "-", to = "-" } = selectedRoute.properties;
     selectedRouteLabel = `Маршрут ${ref}: ${selectedRoute.properties.direction}`;
@@ -274,8 +240,7 @@ function renderMapData(data) {
     const allRelations = stop.properties?.["@relations"] || [];
 
     marker.on("mouseover", () => {
-      const { html } = popUpTemplate(stop, routes);
-
+      const { html } = window.popUpTemplate(stop, routes);
       marker._popup = L.popup().setLatLng(latlng).setContent(html).openOn(map);
 
       const relIds = allRelations.map((r) => r.rel);
@@ -287,7 +252,7 @@ function renderMapData(data) {
       const routeColorPairs = [];
 
       matchedRoutes.forEach((route, index) => {
-        const color = colorPalette[index % colorPalette.length];
+        const color = window.colorPalette[index % window.colorPalette.length];
         const hoverLayer = L.geoJSON(route.geometry, {
           style: { color, dashArray: "4", weight: 4, opacity: 0.8 },
         });
@@ -306,7 +271,7 @@ function renderMapData(data) {
     });
 
     marker.on("click", () => {
-      const { html, scheduleHtml } = popUpTemplate(stop, routes);
+      const { html, scheduleHtml } = window.popUpTemplate(stop, routes);
 
       const popup = L.popup({ closeButton: false })
         .setLatLng(latlng)
@@ -329,7 +294,7 @@ function renderMapData(data) {
 const legend = L.control({ position: "bottomright" });
 legend.onAdd = function () {
   const div = L.DomUtil.create("div", "info legend");
-  div.innerHTML = legendTemplate();
+  div.innerHTML = window.legendTemplate();
   return div;
 };
 legend.addTo(map);

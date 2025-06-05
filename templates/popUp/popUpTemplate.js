@@ -1,6 +1,4 @@
-import { scheduleTemplate } from "../schedule/scheduleTemplate.js";
-
-export const popUpTemplate = (stop, routes) => {
+window.popUpTemplate = (stop, routes) => {
   const name = stop.properties.name || "Неизвестна спирка";
   const allRelations = stop.properties?.["@relations"] || [];
 
@@ -38,7 +36,7 @@ export const popUpTemplate = (stop, routes) => {
     })
     .join("");
 
-  const scheduleHtml = scheduleTemplate(allRelations);
+  const scheduleHtml = window.scheduleTemplate(allRelations);
 
   const html = `
     <div class="popup-container">
