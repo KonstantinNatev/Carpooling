@@ -80,7 +80,17 @@ async function loadAllScrapedRoutes() {
         const refId = `relation/${data.line?.id}`;
         const from = route?.details?.from || "-";
         const to = route?.details?.to || "-";
-        const type = data.line.tr_name;
+        const rawType = (data.line.tr_name || "").trim().toLowerCase().replace(/[\s_]/g, "");
+        const typeMap = {
+          "трамвай": "tram",
+          "тролейбус": "trolleybus",
+          "автобус": "bus",
+          "tram": "tram",
+          "trolleybus": "trolleybus",
+          "bus": "bus"
+        };
+        const type = typeMap[rawType] || rawType;
+
         const direction = route.name;
         const polyline = route?.details?.polyline || "";
 
@@ -287,6 +297,27 @@ function renderMapData(data) {
       });
 
       popup.openOn(map);
+    });
+  });
+  document.querySelectorAll('.route-type').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const checkedTypes = Array.from(document.querySelectorAll('.route-type:checked'))
+        .map(cb => cb.value.trim().toLowerCase());
+
+      if (!geoLayer) return;
+
+      geoLayer.clearLayers();
+
+      const filteredRoutes = window.allRoutes.filter(feature => {
+        const rawType = feature.properties.type || "";
+        const normalized = rawType.trim().toLowerCase().replace(/[\s_]/g, "");
+        return checkedTypes.includes(normalized);
+      });
+
+      console.log("Checked types:", checkedTypes);
+      console.log("Filtered routes:", filteredRoutes.map(r => r.properties.ref));
+
+      geoLayer.addData(filteredRoutes);
     });
   });
 }
