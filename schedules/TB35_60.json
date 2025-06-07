@@ -9,7 +9,7 @@
     "created_at": "2025-06-02T05:00:01.000000Z",
     "updated_at": "2025-06-02T05:17:02.000000Z",
     "tr_name": "bus",
-    "tr_icon": "/images/transport_types/trolley.png",
+    "tr_icon": "/images/transport_types/bus.png",
     "tr_color": "#BD202E"
   },
   "routes": [

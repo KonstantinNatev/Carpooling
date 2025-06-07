@@ -80,14 +80,17 @@ async function loadAllScrapedRoutes() {
         const refId = `relation/${data.line?.id}`;
         const from = route?.details?.from || "-";
         const to = route?.details?.to || "-";
-        const rawType = (data.line.tr_name || "").trim().toLowerCase().replace(/[\s_]/g, "");
+        const rawType = (data.line.tr_name || "")
+          .trim()
+          .toLowerCase()
+          .replace(/[\s_]/g, "");
         const typeMap = {
-          "трамвай": "tram",
-          "тролейбус": "trolleybus",
-          "автобус": "bus",
-          "tram": "tram",
-          "trolleybus": "trolleybus",
-          "bus": "bus"
+          трамвай: "tram",
+          тролейбус: "trolleybus",
+          автобус: "bus",
+          tram: "tram",
+          trolleybus: "trolleybus",
+          bus: "bus",
         };
         const type = typeMap[rawType] || rawType;
 
@@ -233,11 +236,14 @@ function renderMapData(data) {
     updateDynamicLegend([]);
   };
 
+  window.allStopMarkers = [];
+
   stops.forEach((stop) => {
     const latlng = L.latLng(
       stop.geometry.coordinates[1],
       stop.geometry.coordinates[0]
     );
+
     const marker = L.circleMarker(latlng, {
       radius: 5,
       fillColor: "#ffc107",
@@ -246,6 +252,9 @@ function renderMapData(data) {
       opacity: 1,
       fillOpacity: 0.9,
     }).addTo(map);
+
+    marker._stopData = stop;
+    window.allStopMarkers.push(marker);
 
     const allRelations = stop.properties?.["@relations"] || [];
 
@@ -299,25 +308,45 @@ function renderMapData(data) {
       popup.openOn(map);
     });
   });
-  document.querySelectorAll('.route-type').forEach(cb => {
-    cb.addEventListener('change', () => {
-      const checkedTypes = Array.from(document.querySelectorAll('.route-type:checked'))
-        .map(cb => cb.value.trim().toLowerCase());
+
+  document.querySelectorAll(".route-type").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const checkedTypes = Array.from(
+        document.querySelectorAll(".route-type:checked")
+      ).map((cb) => cb.value.trim().toLowerCase());
 
       if (!geoLayer) return;
 
       geoLayer.clearLayers();
-
-      const filteredRoutes = window.allRoutes.filter(feature => {
+      const filteredRoutes = window.allRoutes.filter((feature) => {
         const rawType = feature.properties.type || "";
         const normalized = rawType.trim().toLowerCase().replace(/[\s_]/g, "");
         return checkedTypes.includes(normalized);
       });
-
-      console.log("Checked types:", checkedTypes);
-      console.log("Filtered routes:", filteredRoutes.map(r => r.properties.ref));
-
       geoLayer.addData(filteredRoutes);
+
+      window.allStopMarkers.forEach((marker) => {
+        const stop = marker._stopData;
+        const relations = stop?.properties?.["@relations"] || [];
+
+        const isMatch = relations.some((rel) =>
+          checkedTypes.includes(
+            (
+              window.allRoutes.find((r) => r.properties.line_id === rel.rel)
+                ?.properties?.type || ""
+            )
+              .trim()
+              .toLowerCase()
+              .replace(/[\s_]/g, "")
+          )
+        );
+
+        if (isMatch) {
+          if (!map.hasLayer(marker)) marker.addTo(map);
+        } else {
+          if (map.hasLayer(marker)) map.removeLayer(marker);
+        }
+      });
     });
   });
 }
