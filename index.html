@@ -168,5 +168,103 @@
         Трамвай</label
       >
     </div>
+
+    <div
+      id="debbug-panel"
+      style="
+        position: absolute;
+        top: 10px;
+        left: 60px;
+        z-index: 1001;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        padding: 16px 14px;
+        width: 220px;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+      "
+    >
+      <h3
+        style="margin-top: 0; font-size: 15px; color: #333; margin-bottom: 12px"
+      >
+        ⚙️ Настройки
+      </h3>
+
+      <label for="pointSizeInput" style="display: block; margin-bottom: 6px">
+        Размер на спирките:
+      </label>
+      <input
+        type="number"
+        id="pointSizeInput"
+        value="5"
+        min="1"
+        max="20"
+        style="
+          width: 90%;
+          padding: 6px;
+          margin-bottom: 12px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+        "
+      />
+
+      <label for="lineWeightInput" style="display: block; margin-bottom: 6px">
+        Дебелина на маршрут:
+      </label>
+      <input
+        type="number"
+        id="lineWeightInput"
+        value="2"
+        min="1"
+        max="10"
+        style="
+          width: 90%;
+          padding: 6px;
+          margin-bottom: 12px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+        "
+      />
+
+      <label
+        for="highlightWeightInput"
+        style="display: block; margin-bottom: 6px"
+      >
+        Дебелина на избран маршрут:
+      </label>
+      <input
+        type="number"
+        id="highlightWeightInput"
+        value="6"
+        min="1"
+        max="15"
+        style="
+          width: 90%;
+          padding: 6px;
+          margin-bottom: 16px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+        "
+      />
+
+      <button
+        id="applySettingsBtn"
+        style="
+          width: 100%;
+          padding: 8px;
+          background-color: #007bff;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-weight: 500;
+        "
+      >
+        Приложи
+      </button>
+    </div>
   </body>
 </html>

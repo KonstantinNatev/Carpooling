@@ -5,6 +5,12 @@ let startMarker = null;
 let endMarker = null;
 let geoLayer = null;
 let selectedRouteLabel = "";
+window.hoverLayerGroup = null;
+window.debugSettings = {
+  pointSize: 5,
+  lineWeight: 4,
+  highlightWeight: 6,
+};
 
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
@@ -211,7 +217,11 @@ function renderMapData(data) {
     const color = selectedRoute.properties.tr_color || window.getRouteColor(1);
 
     highlightedRoute = L.geoJSON(selectedRoute.geometry, {
-      style: { color, weight: 6, opacity: 1 },
+      style: {
+        color,
+        weight: window.debugSettings.highlightWeight,
+        opacity: 1,
+      },
     }).addTo(map);
 
     const coords = turf.getCoords(selectedRoute.geometry);
@@ -245,10 +255,10 @@ function renderMapData(data) {
     );
 
     const marker = L.circleMarker(latlng, {
-      radius: 5,
+      radius: window.debugSettings.pointSize,
       fillColor: "#ffc107",
       color: "#343a40",
-      weight: 2,
+      weight: window.debugSettings.pointSize,
       opacity: 1,
       fillOpacity: 0.9,
     }).addTo(map);
@@ -267,15 +277,22 @@ function renderMapData(data) {
         relIds.includes(r.properties?.line_id)
       );
 
-      const hoverLayerGroup = L.layerGroup().addTo(map);
+      if (window.hoverLayerGroup) map.removeLayer(window.hoverLayerGroup);
+      window.hoverLayerGroup = L.layerGroup().addTo(map);
+
       const routeColorPairs = [];
 
       matchedRoutes.forEach((route, index) => {
         const color = window.colorPalette[index % window.colorPalette.length];
         const hoverLayer = L.geoJSON(route.geometry, {
-          style: { color, dashArray: "4", weight: 4, opacity: 0.8 },
+          style: {
+            color,
+            dashArray: "10",
+            weight: window.debugSettings.lineWeight,
+            opacity: 0.8,
+          },
         });
-        hoverLayerGroup.addLayer(hoverLayer);
+        window.hoverLayerGroup.addLayer(hoverLayer);
         const { ref = "?", direction = "-" } = route.properties;
         routeColorPairs.push([color, `Маршрут ${ref}: ${direction}`]);
       });
@@ -283,7 +300,10 @@ function renderMapData(data) {
       updateDynamicLegend(routeColorPairs);
 
       marker.once("mouseout", () => {
-        map.removeLayer(hoverLayerGroup);
+        if (window.hoverLayerGroup) {
+          map.removeLayer(window.hoverLayerGroup);
+          window.hoverLayerGroup = null;
+        }
         updateDynamicLegend([]);
         if (marker._popup) map.closePopup(marker._popup);
       });
@@ -349,6 +369,12 @@ function renderMapData(data) {
       });
     });
   });
+
+  document.querySelectorAll(".route-type").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      document.getElementById("applySettingsBtn").click();
+    });
+  });
 }
 
 const legend = L.control({ position: "bottomright" });
@@ -360,3 +386,58 @@ legend.onAdd = function () {
 legend.addTo(map);
 
 loadAllScrapedRoutes();
+
+document.addEventListener("DOMContentLoaded", () => {
+  const { pointSize, lineWeight, highlightWeight } = debugSettings;
+  document.getElementById("pointSizeInput").value = pointSize;
+  document.getElementById("lineWeightInput").value = lineWeight;
+  document.getElementById("highlightWeightInput").value = highlightWeight;
+});
+
+document.addEventListener("click", function (event) {
+  const target = event.target;
+  if (target && target.id === "applySettingsBtn") {
+    document
+      .getElementById("applySettingsBtn")
+      .addEventListener("click", () => {
+        const pointSize = parseFloat(
+          document.getElementById("pointSizeInput").value
+        );
+        const lineWeight = parseFloat(
+          document.getElementById("lineWeightInput").value
+        );
+        const highlightWeight = parseFloat(
+          document.getElementById("highlightWeightInput").value
+        );
+
+        window.debugSettings.pointSize = pointSize;
+        window.debugSettings.lineWeight = lineWeight;
+        window.debugSettings.highlightWeight = highlightWeight;
+
+        // Обновяване на маршрутите
+        if (window.hoverLayerGroup) {
+          window.hoverLayerGroup.eachLayer((layer) => {
+            if (layer.setStyle) {
+              layer.setStyle({
+                weight: window.debugSettings.lineWeight,
+              });
+            }
+          });
+        }
+
+        // Обновяване на спирките
+        if (Array.isArray(window.allStopMarkers)) {
+          window.allStopMarkers.forEach((marker) => {
+            marker.setRadius(pointSize);
+          });
+        }
+
+        // Обновяване на маркирания маршрут (ако има)
+        if (highlightedRoute) {
+          highlightedRoute.setStyle({
+            weight: highlightWeight,
+          });
+        }
+      });
+  }
+});
