@@ -5,12 +5,16 @@ let startMarker = null;
 let endMarker = null;
 let geoLayer = null;
 let selectedRouteLabel = "";
+let currentPopup = null;
 window.hoverLayerGroup = null;
 window.debugSettings = {
   pointSize: 5,
   lineWeight: 4,
   highlightWeight: 6,
 };
+
+const urlParams = new URLSearchParams(window.location.search);
+const debug = urlParams.get("debug");
 
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
@@ -310,9 +314,26 @@ function renderMapData(data) {
     });
 
     marker.on("click", () => {
+      /**
+       * Проверяваме дали същестува ли pop up
+       * Различни ли са кординатите му от тези на предния спрямо точката
+       * И накрая проверяваме  дали дадения layer е добавен към картата
+       */
+      if (
+        currentPopup &&
+        !currentPopup.getLatLng().equals(latlng) &&
+        map.hasLayer(currentPopup)
+      ) {
+        map.closePopup(currentPopup);
+      }
+
       const { html, scheduleHtml } = window.popUpTemplate(stop, routes);
 
-      const popup = L.popup({ closeButton: false })
+      const popup = L.popup({
+        closeButton: false,
+        autoClose: false,
+        closeOnClick: false,
+      })
         .setLatLng(latlng)
         .setContent(html);
 
@@ -323,9 +344,18 @@ function renderMapData(data) {
             showSchedulePanel(scheduleHtml);
           });
         }
+
+        const closeBtn = document.getElementById("popup-close-btn");
+        if (closeBtn && currentPopup) {
+          closeBtn.addEventListener("click", () => {
+            map.closePopup(popup);
+            currentPopup = null;
+          });
+        }
       });
 
       popup.openOn(map);
+      currentPopup = popup;
     });
   });
 
@@ -388,6 +418,13 @@ legend.addTo(map);
 loadAllScrapedRoutes();
 
 document.addEventListener("DOMContentLoaded", () => {
+  if (debug !== "true") {
+    const debugPanel = document.getElementById("debbug-panel");
+    if (debugPanel) {
+      debugPanel.style.display = "none";
+    }
+  }
+
   const { pointSize, lineWeight, highlightWeight } = debugSettings;
   document.getElementById("pointSizeInput").value = pointSize;
   document.getElementById("lineWeightInput").value = lineWeight;
