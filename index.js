@@ -6,6 +6,8 @@ let endMarker = null;
 let geoLayer = null;
 let selectedRouteLabel = "";
 let currentPopup = null;
+let popupCloseTimeout = null;
+
 window.hoverLayerGroup = null;
 window.debugSettings = {
   pointSize: 5,
@@ -211,15 +213,23 @@ function renderMapData(data) {
   }).addTo(map);
 
   window.allRoutes = routes;
+
   window.highlightRoute = (routeId) => {
+    // Ако вече е избрана същата линия – деселектирай я
+    if (selectedRouteLabel && selectedRouteLabel.includes(routeId)) {
+      clearMapHighlights();
+      return;
+    }
+  
     clearMapHighlights();
+  
     const selectedRoute = window.allRoutes.find(
       (r) => r.properties?.["@id"] === routeId
     );
     if (!selectedRoute) return;
-
+  
     const color = selectedRoute.properties.tr_color || window.getRouteColor(1);
-
+  
     highlightedRoute = L.geoJSON(selectedRoute.geometry, {
       style: {
         color,
@@ -228,6 +238,17 @@ function renderMapData(data) {
       },
     }).addTo(map);
 
+    // Показваме спирките над селектираната линия
+    if (Array.isArray(window.allStopMarkers)) {
+      window.allStopMarkers.forEach((marker) => {
+        marker.bringToFront();
+      });
+    }
+
+    highlightedRoute.on("click", () => {
+      clearMapHighlights();
+    });
+  
     const coords = turf.getCoords(selectedRoute.geometry);
     const [firstCoord, lastCoord] =
       selectedRoute.geometry.type === "LineString"
@@ -236,17 +257,16 @@ function renderMapData(data) {
             const longest = coords.sort((a, b) => b.length - a.length)[0];
             return [longest[0], longest[longest.length - 1]];
           })();
-
+  
     startMarker = L.marker([firstCoord[1], firstCoord[0]], {
       icon: window.blueIcon,
     }).addTo(map);
-
+  
     endMarker = L.marker([lastCoord[1], lastCoord[0]], {
       icon: window.redIcon,
     }).addTo(map);
-
-    const { ref = "?", from = "-", to = "-" } = selectedRoute.properties;
-    selectedRouteLabel = `Маршрут ${ref}: ${selectedRoute.properties.direction}`;
+  
+    selectedRouteLabel = `${routeId}`; // Променено да се използва routeId за сравнение по-горе
     updateDynamicLegend([]);
   };
 
@@ -310,7 +330,18 @@ function renderMapData(data) {
         }
         updateDynamicLegend([]);
         if (marker._popup) map.closePopup(marker._popup);
+
+        popupCloseTimeout = setTimeout(() => {
+          if (window.hoverLayerGroup) {
+            map.removeLayer(window.hoverLayerGroup);
+            window.hoverLayerGroup = null;
+          }
+          updateDynamicLegend([]);
+          if (marker._popup) map.closePopup(marker._popup);
+        }, 200); // 200ms буфер
       });
+
+      clearTimeout(popupCloseTimeout);
     });
 
     marker.on("click", () => {
@@ -327,7 +358,30 @@ function renderMapData(data) {
         map.closePopup(currentPopup);
       }
 
+      if (
+        currentPopup &&
+        currentPopup.getLatLng().equals(latlng) &&
+        map.hasLayer(currentPopup)
+      ) {
+        return
+      }
+
       const { html, scheduleHtml } = window.popUpTemplate(stop, routes);
+
+      const firstRelation = allRelations[0];
+      if (firstRelation && firstRelation.rel) {
+        // Намираме съответния маршрут по line_id и име на direction (ако е нужно)
+        const route = routes.find(
+          (r) =>
+            r.properties.line_id === firstRelation.rel &&
+            r.properties.direction === firstRelation.direction
+        );
+
+        if (route) {
+          // Извикваме съществуващата функция за селекция
+          window.highlightRoute(route.properties["@id"]);
+        }
+      }
 
       const popup = L.popup({
         closeButton: false,
