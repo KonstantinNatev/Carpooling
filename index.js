@@ -1,10 +1,15 @@
-const map = L.map("map").setView([42.6977, 23.3219], 13);
+window.map = L.map("map").setView([42.6977, 23.3219], 13);
 
-let highlightedRoute = null;
-let startMarker = null;
-let endMarker = null;
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "&copy; OpenStreetMap contributors",
+}).addTo(window.map);
+
+window.window.highlightedRoute = null;
+window.startMarker = null;
+window.endMarker = null;
 let geoLayer = null;
-let selectedRouteLabel = "";
+window.selectedRouteLabel = "";
 let currentPopup = null;
 let popupCloseTimeout = null;
 
@@ -17,38 +22,6 @@ window.debugSettings = {
 
 const urlParams = new URLSearchParams(window.location.search);
 const debug = urlParams.get("debug");
-
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19,
-  attribution: "&copy; OpenStreetMap contributors",
-}).addTo(map);
-
-const clearMapHighlights = () => {
-  if (highlightedRoute) map.removeLayer(highlightedRoute);
-  if (startMarker) map.removeLayer(startMarker);
-  if (endMarker) map.removeLayer(endMarker);
-  highlightedRoute = startMarker = endMarker = null;
-  selectedRouteLabel = "";
-  updateDynamicLegend([]);
-};
-
-const updateDynamicLegend = (routeColorPairs) => {
-  const legendRoutes = document.getElementById("legend-routes");
-  if (!legendRoutes) return;
-  const selected = selectedRouteLabel
-    ? `<div style="margin-bottom:4px;"><strong style="color:#004aad;">✅ ${selectedRouteLabel}</strong></div>`
-    : "";
-  const hoverList = routeColorPairs
-    .map(
-      ([color, label]) => `
-      <div>
-        <span style="display:inline-block; width:16px; height:10px; background:${color}; margin-right:6px;"></span>
-        ${label}
-      </div>`
-    )
-    .join("");
-  legendRoutes.innerHTML = selected + hoverList;
-};
 
 document.addEventListener("click", function (event) {
   const target = event.target;
@@ -201,6 +174,138 @@ async function loadAllScrapedRoutes() {
   }
 }
 
+window.renderStopPanel = function (stop) {
+  const allRelations = stop.properties?.["@relations"] || [];
+  const stopName = stop.properties.name || "Без име";
+
+  // Остави за сега !!!
+  // Фокусирам отново точката (спирката) и зумвам на нея
+  // map.setView(
+  //   L.latLng(stop.geometry.coordinates[1], stop.geometry.coordinates[0]),
+  //   Math.max(map.getZoom(), 16),
+  //   { animate: true }
+  // );
+
+  // Ресет на всички маркери
+  window.allStopMarkers.forEach((m) =>
+    m.setStyle({ color: "#343a40", weight: window.debugSettings.pointSize })
+  );
+
+  // Активен маркер
+  const matchedMarker = window.allStopMarkers.find((m) => m._stopData === stop);
+  if (matchedMarker) {
+    matchedMarker.setStyle({
+      color: "#007bff",
+      weight: window.debugSettings.pointSize + 2,
+    });
+  }
+
+  // Обновяване на име на спирка
+  document.getElementById("stop-name").textContent = stopName;
+
+  const routes = window.allRoutes;
+  const selectedRouteId = window.selectedRouteLabel; // 🔧 вярно прочетено
+  const lineGroups = allRelations.reduce((acc, rel) => {
+    if (!acc[rel.ref]) acc[rel.ref] = [];
+    acc[rel.ref].push(rel);
+    return acc;
+  }, {});
+
+  const iconMap = {
+    tram: "🚋",
+    trolleybus: "🚎",
+    bus: "🚌",
+  };
+
+  let html = "";
+  Object.entries(lineGroups).forEach(([lineLabel, group]) => {
+    html += `
+      <div class="panel-section">
+        <div class="panel-header">
+          <span class="line-ref">${lineLabel}</span>
+        </div>
+        <div class="line-items">
+    `;
+
+    group.forEach((rel) => {
+      const route = routes.find(
+        (r) =>
+          r.properties.line_id === rel.rel &&
+          r.properties.direction === rel.direction
+      );
+      if (!route) return;
+
+      const routeId = route.properties["@id"];
+      const icon = iconMap[route.properties.type] || "🚌";
+      const isSelected = routeId === selectedRouteId;
+
+      html += `
+        <div class="line-item ${isSelected ? "active" : ""}">
+          <div class="line-info">
+            <span class="line-icon">${icon}</span>
+            <span class="line-direction">${rel.direction}</span>
+            ${isSelected ? `<span class="line-tag">Избран</span>` : ""}
+          </div>
+          <div class="line-actions">
+            <button 
+              class="action-btn preview-btn ${isSelected ? "selected" : ""}" 
+              data-route-id="${routeId}"
+              onclick="window.highlightRoute('${routeId}')">
+              ${isSelected ? "Премахни" : "Преглед"}
+            </button>
+            <button class="action-btn secondary schedule-btn" data-schedule-html="${encodeURIComponent(
+              window.scheduleTemplate([rel])
+            )}">Разписание</button>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `</div></div>`;
+  });
+
+  const stopContent = document.getElementById("stop-info-content");
+  stopContent.innerHTML = html;
+  document.getElementById("stop-info-panel").style.display = "block";
+  window.lastSelectedStop = stop;
+
+  // Ако все още няма избрана линия – селектирай първата от списъка
+  if (!window.selectedRouteLabel) {
+    const firstBtn = document.querySelector(".preview-btn");
+    if (firstBtn) {
+      const firstRouteId = firstBtn.getAttribute("data-route-id");
+      if (firstRouteId) {
+        window.highlightRoute(firstRouteId);
+      }
+    }
+  }
+
+  //  Остави го за сега !!!
+  //
+  //  Добавяме event listeners след DOM рендерирането
+  // document.querySelectorAll(".preview-btn").forEach((btn) => {
+  //   btn.addEventListener("click", () => {
+  //     const routeId = btn.getAttribute("data-route-id");
+  //     if (routeId) {
+  //       window.highlightRoute(routeId); //  преизареди renderStopPanel
+  //     }
+  //   });
+  // });
+
+  document.querySelectorAll(".schedule-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const html = btn.getAttribute("data-schedule-html");
+      if (html) {
+        showSchedulePanel(html);
+      }
+    });
+  });
+
+  document.getElementById("stop-panel-close")?.addEventListener("click", () => {
+    document.getElementById("stop-info-panel").style.display = "none";
+  });
+};
+
 function renderMapData(data) {
   const stops = data.features.filter((f) => f.geometry.type === "Point");
   const routes = data.features.filter((f) => f.geometry.type.includes("Line"));
@@ -215,13 +320,13 @@ function renderMapData(data) {
   window.allRoutes = routes;
 
   window.highlightRoute = (routeId) => {
-    // Ако вече е избрана същата линия – деселектирай я
-    if (selectedRouteLabel && selectedRouteLabel.includes(routeId)) {
-      clearMapHighlights();
+    if (window.selectedRouteLabel && window.selectedRouteLabel.includes(routeId)) {
+      console.error("same route clicked → deselecting");
+      window.clearMapHighlights();
       return;
     }
-  
-    clearMapHighlights();
+
+    window.clearMapHighlights();
   
     const selectedRoute = window.allRoutes.find(
       (r) => r.properties?.["@id"] === routeId
@@ -230,23 +335,25 @@ function renderMapData(data) {
   
     const color = selectedRoute.properties.tr_color || window.getRouteColor(1);
   
-    highlightedRoute = L.geoJSON(selectedRoute.geometry, {
+    window.highlightedRoute = L.geoJSON(selectedRoute.geometry, {
       style: {
         color,
         weight: window.debugSettings.highlightWeight,
         opacity: 1,
       },
     }).addTo(map);
-
-    // Показваме спирките над селектираната линия
+  
     if (Array.isArray(window.allStopMarkers)) {
       window.allStopMarkers.forEach((marker) => {
         marker.bringToFront();
       });
     }
-
-    highlightedRoute.on("click", () => {
-      clearMapHighlights();
+  
+    window.highlightedRoute.on("click", () => {
+      window.clearMapHighlights();
+      if (window.lastSelectedStop) {
+        window.renderStopPanel(window.lastSelectedStop);
+      }
     });
   
     const coords = turf.getCoords(selectedRoute.geometry);
@@ -258,26 +365,34 @@ function renderMapData(data) {
             return [longest[0], longest[longest.length - 1]];
           })();
   
-    startMarker = L.marker([firstCoord[1], firstCoord[0]], {
+    window.startMarker = L.marker([firstCoord[1], firstCoord[0]], {
       icon: window.blueIcon,
     }).addTo(map);
   
-    endMarker = L.marker([lastCoord[1], lastCoord[0]], {
+    window.endMarker = L.marker([lastCoord[1], lastCoord[0]], {
       icon: window.redIcon,
     }).addTo(map);
   
-    selectedRouteLabel = `${routeId}`; // Променено да се използва routeId за сравнение по-горе
-    updateDynamicLegend([]);
+    window.updateDynamicLegend([]);
+    window.selectedRouteLabel = routeId;
+  
+    if (window.lastSelectedStop) {
+      window.renderStopPanel(window.lastSelectedStop);
+    }
   };
 
   window.allStopMarkers = [];
 
+  const stopClusterGroup = L.markerClusterGroup({
+    disableClusteringAtZoom: 18, // автоматично показва маркерите при по-близък zoom
+  });
+  map.addLayer(stopClusterGroup);
   stops.forEach((stop) => {
     const latlng = L.latLng(
       stop.geometry.coordinates[1],
       stop.geometry.coordinates[0]
     );
-
+  
     const marker = L.circleMarker(latlng, {
       radius: window.debugSettings.pointSize,
       fillColor: "#ffc107",
@@ -285,7 +400,7 @@ function renderMapData(data) {
       weight: window.debugSettings.pointSize,
       opacity: 1,
       fillOpacity: 0.9,
-    }).addTo(map);
+    });
 
     marker._stopData = stop;
     window.allStopMarkers.push(marker);
@@ -293,8 +408,13 @@ function renderMapData(data) {
     const allRelations = stop.properties?.["@relations"] || [];
 
     marker.on("mouseover", () => {
+      clearTimeout(popupCloseTimeout);
+
       const { html } = window.popUpTemplate(stop, routes);
-      marker._popup = L.popup().setLatLng(latlng).setContent(html).openOn(map);
+      marker._popup = L.popup({
+        closeButton: false,
+        autoClose: false,
+      }).setLatLng(latlng).setContent(html).openOn(map);
 
       const relIds = allRelations.map((r) => r.rel);
       const matchedRoutes = routes.filter((r) =>
@@ -321,144 +441,73 @@ function renderMapData(data) {
         routeColorPairs.push([color, `Маршрут ${ref}: ${direction}`]);
       });
 
-      updateDynamicLegend(routeColorPairs);
+      window.updateDynamicLegend(routeColorPairs);
+    });
 
-      marker.once("mouseout", () => {
+    marker.on("mouseout", () => {
+      popupCloseTimeout = setTimeout(() => {
         if (window.hoverLayerGroup) {
           map.removeLayer(window.hoverLayerGroup);
           window.hoverLayerGroup = null;
         }
-        updateDynamicLegend([]);
+        window.updateDynamicLegend([]);
         if (marker._popup) map.closePopup(marker._popup);
-
-        popupCloseTimeout = setTimeout(() => {
-          if (window.hoverLayerGroup) {
-            map.removeLayer(window.hoverLayerGroup);
-            window.hoverLayerGroup = null;
-          }
-          updateDynamicLegend([]);
-          if (marker._popup) map.closePopup(marker._popup);
-        }, 200); // 200ms буфер
-      });
-
-      clearTimeout(popupCloseTimeout);
+      }, 200);
     });
 
     marker.on("click", () => {
-      /**
-       * Проверяваме дали същестува ли pop up
-       * Различни ли са кординатите му от тези на предния спрямо точката
-       * И накрая проверяваме  дали дадения layer е добавен към картата
-       */
-      if (
-        currentPopup &&
-        !currentPopup.getLatLng().equals(latlng) &&
-        map.hasLayer(currentPopup)
-      ) {
-        map.closePopup(currentPopup);
-      }
+      window.clearMapHighlights();
+      window.renderStopPanel(marker._stopData);
+    })
 
-      if (
-        currentPopup &&
-        currentPopup.getLatLng().equals(latlng) &&
-        map.hasLayer(currentPopup)
-      ) {
-        return
-      }
-
-      const { html, scheduleHtml } = window.popUpTemplate(stop, routes);
-
-      const firstRelation = allRelations[0];
-      if (firstRelation && firstRelation.rel) {
-        // Намираме съответния маршрут по line_id и име на direction (ако е нужно)
-        const route = routes.find(
-          (r) =>
-            r.properties.line_id === firstRelation.rel &&
-            r.properties.direction === firstRelation.direction
-        );
-
-        if (route) {
-          // Извикваме съществуващата функция за селекция
-          window.highlightRoute(route.properties["@id"]);
-        }
-      }
-
-      const popup = L.popup({
-        closeButton: false,
-        autoClose: false,
-        closeOnClick: false,
-      })
-        .setLatLng(latlng)
-        .setContent(html);
-
-      popup.on("add", () => {
-        const btn = document.getElementById("btn-schedule-view");
-        if (btn) {
-          btn.addEventListener("click", () => {
-            showSchedulePanel(scheduleHtml);
-          });
-        }
-
-        const closeBtn = document.getElementById("popup-close-btn");
-        if (closeBtn && currentPopup) {
-          closeBtn.addEventListener("click", () => {
-            map.closePopup(popup);
-            currentPopup = null;
-          });
-        }
-      });
-
-      popup.openOn(map);
-      currentPopup = popup;
-    });
+    stopClusterGroup.addLayer(marker);
   });
-
-  document.querySelectorAll(".route-type").forEach((cb) => {
-    cb.addEventListener("change", () => {
-      const checkedTypes = Array.from(
-        document.querySelectorAll(".route-type:checked")
-      ).map((cb) => cb.value.trim().toLowerCase());
-
-      if (!geoLayer) return;
-
-      geoLayer.clearLayers();
-      const filteredRoutes = window.allRoutes.filter((feature) => {
-        const rawType = feature.properties.type || "";
-        const normalized = rawType.trim().toLowerCase().replace(/[\s_]/g, "");
-        return checkedTypes.includes(normalized);
-      });
-      geoLayer.addData(filteredRoutes);
-
-      window.allStopMarkers.forEach((marker) => {
-        const stop = marker._stopData;
-        const relations = stop?.properties?.["@relations"] || [];
-
-        const isMatch = relations.some((rel) =>
-          checkedTypes.includes(
-            (
-              window.allRoutes.find((r) => r.properties.line_id === rel.rel)
-                ?.properties?.type || ""
-            )
-              .trim()
-              .toLowerCase()
-              .replace(/[\s_]/g, "")
+  const filterRoutesAndStops = () => {
+    const checkedTypes = Array.from(
+      document.querySelectorAll(".route-type:checked")
+    ).map((cb) => cb.value.trim().toLowerCase());
+  
+    if (!geoLayer) return;
+  
+    // Обновяване на маршрутите
+    geoLayer.clearLayers();
+    const filteredRoutes = window.allRoutes.filter((feature) => {
+      const rawType = feature.properties.type || "";
+      const normalized = rawType.trim().toLowerCase().replace(/[\s_]/g, "");
+      return checkedTypes.includes(normalized);
+    });
+    geoLayer.addData(filteredRoutes);
+  
+    // Обновяване на спирките
+    window.allStopMarkers.forEach((marker) => {
+      const stop = marker._stopData;
+      const relations = stop?.properties?.["@relations"] || [];
+  
+      const isMatch = relations.some((rel) =>
+        checkedTypes.includes(
+          (
+            window.allRoutes.find((r) => r.properties.line_id === rel.rel)
+              ?.properties?.type || ""
           )
-        );
-
-        if (isMatch) {
-          if (!map.hasLayer(marker)) marker.addTo(map);
-        } else {
-          if (map.hasLayer(marker)) map.removeLayer(marker);
-        }
-      });
+            .trim()
+            .toLowerCase()
+            .replace(/[\s_]/g, "")
+        )
+      );
+  
+      if (isMatch) {
+        if (!stopClusterGroup.hasLayer(marker)) stopClusterGroup.addLayer(marker);
+      } else {
+        if (stopClusterGroup.hasLayer(marker)) stopClusterGroup.removeLayer(marker);
+      }
     });
-  });
-
+  };
+  
+  // Слушатели за чекбокси
   document.querySelectorAll(".route-type").forEach((cb) => {
-    cb.addEventListener("change", () => {
-      document.getElementById("applySettingsBtn").click();
-    });
+    cb.addEventListener("change", filterRoutesAndStops);
   });
+
 }
 
 const legend = L.control({ position: "bottomright" });
@@ -524,8 +573,8 @@ document.addEventListener("click", function (event) {
         }
 
         // Обновяване на маркирания маршрут (ако има)
-        if (highlightedRoute) {
-          highlightedRoute.setStyle({
+        if (window.highlightedRoute) {
+          window.highlightedRoute.setStyle({
             weight: highlightWeight,
           });
         }

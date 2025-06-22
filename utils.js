@@ -29,3 +29,39 @@ window.redIcon = new L.Icon({
   iconSize: [32, 32],
   iconAnchor: [16, 32],
 });
+
+window.clearMapHighlights = function () {
+  if (window.highlightedRoute) window.map.removeLayer(window.highlightedRoute);
+  if (window.startMarker) window.map.removeLayer(window.startMarker);
+  if (window.endMarker) window.map.removeLayer(window.endMarker);
+  window.highlightedRoute = window.startMarker = window.endMarker = null;
+  window.selectedRouteLabel = "";
+  window.updateDynamicLegend([]);
+
+  if (Array.isArray(window.allStopMarkers)) {
+    window.allStopMarkers.forEach((m) =>
+      m.setStyle({
+        color: "#343a40",
+        weight: window.debugSettings.pointSize,
+      })
+    );
+  }
+};
+
+window.updateDynamicLegend = (routeColorPairs) => {
+  const legendRoutes = document.getElementById("legend-routes");
+  if (!legendRoutes) return;
+  const selected = window.selectedRouteLabel
+    ? `<div style="margin-bottom:4px;"><strong style="color:#004aad;">✅ ${window.selectedRouteLabel}</strong></div>`
+    : "";
+  const hoverList = routeColorPairs
+    .map(
+      ([color, label]) => `
+      <div>
+        <span style="display:inline-block; width:16px; height:10px; background:${color}; margin-right:6px;"></span>
+        ${label}
+      </div>`
+    )
+    .join("");
+  legendRoutes.innerHTML = selected + hoverList;
+};
