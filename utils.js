@@ -31,13 +31,45 @@ window.redIcon = new L.Icon({
 });
 
 window.clearMapHighlights = function () {
-  if (window.highlightedRoute) window.map.removeLayer(window.highlightedRoute);
-  if (window.startMarker) window.map.removeLayer(window.startMarker);
-  if (window.endMarker) window.map.removeLayer(window.endMarker);
+  // 🧹 Почисти основния маршрут
+  if (window.highlightedRoute) {
+    if (window.highlightedRoute instanceof L.LayerGroup) {
+      window.highlightedRoute.eachLayer((layer) => {
+        if (window.map.hasLayer(layer)) window.map.removeLayer(layer);
+      });
+      window.map.removeLayer(window.highlightedRoute);
+    } else if (window.map.hasLayer(window.highlightedRoute)) {
+      window.map.removeLayer(window.highlightedRoute);
+    }
+  }
+
+  // 🧹 Почисти старт и край маркери
+  if (window.startMarker && window.map.hasLayer(window.startMarker)) {
+    window.map.removeLayer(window.startMarker);
+  }
+  if (window.endMarker && window.map.hasLayer(window.endMarker)) {
+    window.map.removeLayer(window.endMarker);
+  }
+
+  // 🧹 Почисти hover слой
+  if (window.hoverLayerGroup && window.map.hasLayer(window.hoverLayerGroup)) {
+    window.map.removeLayer(window.hoverLayerGroup);
+    window.hoverLayerGroup = null;
+  }
+
+  // 🧹 Почисти търсачка маркери
+  if (Array.isArray(window.searchMarkers)) {
+    window.searchMarkers.forEach((m) => {
+      if (window.map.hasLayer(m)) window.map.removeLayer(m);
+    });
+    window.searchMarkers = [];
+  }
+
   window.highlightedRoute = window.startMarker = window.endMarker = null;
   window.selectedRouteLabel = "";
-  window.updateDynamicLegend([]);
+  window.updateDynamicLegend?.([]);
 
+  // 🔄 Възстанови стиловете на спирките
   if (Array.isArray(window.allStopMarkers)) {
     window.allStopMarkers.forEach((m) =>
       m.setStyle({
@@ -47,6 +79,7 @@ window.clearMapHighlights = function () {
     );
   }
 };
+
 
 window.updateDynamicLegend = (routeColorPairs) => {
   const legendRoutes = document.getElementById("legend-routes");
