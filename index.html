@@ -1,270 +1,202 @@
 <!DOCTYPE html>
 <html lang="bg">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Leaflet Карта - София</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+  <meta charset="UTF-8" />
+  <title>Leaflet Карта - София</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Leaflet CSS -->
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-      crossorigin=""
-    />
-    <link
-      rel="stylesheet"
-      href="./templates/legend/legendTemplate.styles.css"
-    />
-    <link
-      rel="stylesheet"
-      href="./templates/schedule/scheduleTemplate.styles.css"
-    />
-    <link rel="stylesheet" href="./templates/popUp/popUpTemplate.styles.css" />
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-    <script
-      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-      crossorigin=""
-    ></script>
-    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+  <!-- MarkerCluster CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
 
-    <style>
-      html,
-      body {
-        height: 100%;
-        margin: 0;
-      }
-      #map {
-        height: 100%;
-        width: 100%;
-      }
-      .highlight-route {
-        color: #007bff;
-        text-decoration: underline;
-        cursor: pointer;
-      }
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="./templates/legend/legendTemplate.styles.css" />
+  <link rel="stylesheet" href="./templates/schedule/scheduleTemplate.styles.css" />
+  <link rel="stylesheet" href="./templates/popUp/popUpTemplate.styles.css" />
+  <link rel="stylesheet" href="./index.styles.css" />
 
-      .leaflet-popup-content {
-        font-family: system-ui, sans-serif;
-        font-size: 14px;
-        line-height: 1.4;
-      }
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+    .highlight-route {
+      color: #007bff;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .leaflet-popup-content {
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .popup-route {
+      margin-bottom: 0.75em;
+      padding: 0.5em;
+      border-left: 3px solid #007bff;
+      background: #f7f9fc;
+      border-radius: 4px;
+    }
+    .popup-route b {
+      color: #333;
+    }
+    .highlight-route:hover {
+      text-decoration: underline;
+      color: #0056b3;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #ccc;
+      margin: 0.75em 0;
+    }
+  </style>
+</head>
 
-      .popup-route {
-        margin-bottom: 0.75em;
-        padding: 0.5em;
-        border-left: 3px solid #007bff;
-        background: #f7f9fc;
-        border-radius: 4px;
-      }
+<body>
+  <div id="map"></div>
 
-      .popup-route b {
-        color: #333;
-      }
+  <div id="schedule-panel" style="display: none; position: fixed; top: 0; right: 0; width: 340px; height: 100vh; background: #f9f9f9; border-left: 1px solid #e0e0e0; overflow-y: auto; z-index: 1002; box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1); padding: 24px 16px 16px 16px; font-family: sans-serif;">
+    <button onclick="document.getElementById('schedule-panel').style.display='none'" style="position: absolute; top: 12px; right: 12px; background: transparent; border: none; font-size: 20px; cursor: pointer; color: #555;" aria-label="Close">✖</button>
+    <h2 style="margin-top: 0; font-size: 20px; font-weight: 600; color: #333">Разписание</h2>
+    <div id="schedule-content" style="margin-top: 16px"></div>
+  </div>
 
-      .highlight-route {
-        display: inline-block;
-        margin: 0.2em 0;
-        color: #007bff;
-        text-decoration: none;
-      }
-
-      .highlight-route:hover {
-        text-decoration: underline;
-        color: #0056b3;
-      }
-
-      hr {
-        border: none;
-        border-top: 1px solid #ccc;
-        margin: 0.75em 0;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="map"></div>
-    <div
-      id="schedule-panel"
-      style="
-        display: none;
-        position: fixed;
-        top: 0;
-        right: 0;
-        width: 340px;
-        height: 100vh;
-        background: #f9f9f9;
-        border-left: 1px solid #e0e0e0;
-        overflow-y: auto;
-        z-index: 1002;
-        box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
-        padding: 24px 16px 16px 16px;
-        font-family: sans-serif;
-      "
-    >
-      <button
-        onclick="document.getElementById('schedule-panel').style.display='none'"
-        style="
-          position: absolute;
-          top: 12px;
-          right: 12px;
-          background: transparent;
-          border: none;
-          font-size: 20px;
-          cursor: pointer;
-          color: #555;
-          transition: color 0.2s ease;
-        "
-        onmouseover="this.style.color='#d33'"
-        onmouseout="this.style.color='#555'"
-        aria-label="Close"
-      >
-        ✖
-      </button>
-      <h2 style="margin-top: 0; font-size: 20px; font-weight: 600; color: #333">
-        Разписание
-      </h2>
-      <div id="schedule-content" style="margin-top: 16px"></div>
-    </div>
-
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-
-    <script src="./utils.js"></script>
-    <script src="./templates/legend/legendTemplate.js"></script>
-    <script src="./templates/schedule/scheduleTemplate.js"></script>
-    <script src="./templates/popUp/popUpTemplate.js"></script>
-    <script src="./index.js"></script>
-
-    <div
-      id="filter-box"
-      style="
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        z-index: 1001;
-        background: white;
-        border: 1px solid #ccc;
-        padding: 12px;
-        border-radius: 8px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-        font-family: sans-serif;
-        width: 200px;
-      "
-    >
-      <strong style="display: block; margin-bottom: 8px"
-        >Филтрирай по тип:</strong
-      >
-      <label
-        ><input type="checkbox" class="route-type" value="bus" checked />
-        Автобус</label
-      ><br />
-      <label
-        ><input type="checkbox" class="route-type" value="trolleybus" checked />
-        Тролей</label
-      ><br />
-      <label
-        ><input type="checkbox" class="route-type" value="tram" checked />
-        Трамвай</label
-      >
-    </div>
-
-    <div
-      id="debbug-panel"
-      style="
-        position: absolute;
-        top: 10px;
-        left: 60px;
-        z-index: 1001;
-        background: #fff;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-        padding: 16px 14px;
-        width: 220px;
-        font-family: 'Segoe UI', sans-serif;
-        font-size: 14px;
-        line-height: 1.5;
-      "
-    >
-      <h3
-        style="margin-top: 0; font-size: 15px; color: #333; margin-bottom: 12px"
-      >
-        ⚙️ Настройки
-      </h3>
-
-      <label for="pointSizeInput" style="display: block; margin-bottom: 6px">
-        Размер на спирките:
+  <div id="filter-panel" style="
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    z-index: 1001;
+    font-family: sans-serif;
+    width: 220px;
+    font-size: 14px;
+  ">
+    <strong style="display: block; margin-bottom: 8px;">Филтрирай по тип маршрут:</strong>
+    <div style="margin-bottom: 10px;">
+      <label style="display:block; margin-bottom: 6px;">
+        <input type="checkbox" class="route-type" value="tram" checked /> 🚋 Трамвай
       </label>
-      <input
-        type="number"
-        id="pointSizeInput"
-        value="5"
-        min="1"
-        max="20"
-        style="
-          width: 90%;
-          padding: 6px;
-          margin-bottom: 12px;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-        "
-      />
-
-      <label for="lineWeightInput" style="display: block; margin-bottom: 6px">
-        Дебелина на маршрут:
+      <label style="display:block; margin-bottom: 6px;">
+        <input type="checkbox" class="route-type" value="trolleybus" checked /> 🚎 Тролейбус
       </label>
-      <input
-        type="number"
-        id="lineWeightInput"
-        value="2"
-        min="1"
-        max="10"
-        style="
-          width: 90%;
-          padding: 6px;
-          margin-bottom: 12px;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-        "
-      />
-
-      <label
-        for="highlightWeightInput"
-        style="display: block; margin-bottom: 6px"
-      >
-        Дебелина на избран маршрут:
+      <label style="display:block;">
+        <input type="checkbox" class="route-type" value="bus" checked /> 🚌 Автобус
       </label>
-      <input
-        type="number"
-        id="highlightWeightInput"
-        value="6"
-        min="1"
-        max="15"
-        style="
-          width: 90%;
-          padding: 6px;
-          margin-bottom: 16px;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-        "
-      />
-
-      <button
-        id="applySettingsBtn"
-        style="
-          width: 100%;
-          padding: 8px;
-          background-color: #007bff;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-weight: 500;
-        "
-      >
-        Приложи
-      </button>
     </div>
-  </body>
+  </div>
+
+  <div id="debbug-panel" style="position: absolute; top: 10px; left: 60px; z-index: 1001; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); padding: 16px 14px; width: 220px; font-family: 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.5;">
+    <h3 style="margin-top: 0; font-size: 15px; color: #333; margin-bottom: 12px">⚙️ Настройки</h3>
+
+    <label for="pointSizeInput" style="display: block; margin-bottom: 6px">Размер на спирките:</label>
+    <input type="number" id="pointSizeInput" value="5" min="1" max="20" style="width: 90%; padding: 6px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 4px;" />
+
+    <label for="lineWeightInput" style="display: block; margin-bottom: 6px">Дебелина на маршрут:</label>
+    <input type="number" id="lineWeightInput" value="2" min="1" max="10" style="width: 90%; padding: 6px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 4px;" />
+
+    <label for="highlightWeightInput" style="display: block; margin-bottom: 6px">Дебелина на избран маршрут:</label>
+    <input type="number" id="highlightWeightInput" value="6" min="1" max="15" style="width: 90%; padding: 6px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 4px;" />
+
+    <button id="applySettingsBtn" style="width: 100%; padding: 8px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">Приложи</button>
+  </div>
+
+
+  <div id="info-panel" class="info-panel">
+    <div class="info-panel-header">
+      <h3>Панел с табове</h3>
+      <div class="tab-nav">
+        <button class="tab-btn active" data-tab="tab-stop">🛑 Спирка</button>
+        <button class="tab-btn" data-tab="tab-extra">ℹ️ Инфо</button>
+      </div>
+    </div>
+    <div class="info-panel-content">
+      <div id="tab-stop" class="tab-content active">
+        <h4 id="stop-name">Име на спирка</h4>
+        <div id="stop-info-content" class="stop-panel-content">
+          <!-- динамично съдържание за спирка -->
+        </div>
+      </div>
+      <div id="tab-extra" class="tab-content">
+        <h4 class="route-search-title">🔍 Търсене на маршрут</h4>
+      
+        <form id="route-search-form" class="route-search-form" aria-label="Форма за търсене на маршрут">
+          <div class="form-group">
+            <label for="start-stop" class="form-label">Начална спирка</label>
+            <input
+              type="text"
+              id="start-stop"
+              class="form-input"
+              placeholder="напр. Орлов мост"
+              autocomplete="off"
+              aria-describedby="start-stop-help"
+            />
+          </div>
+        
+          <div class="form-group">
+            <label for="end-stop" class="form-label">Крайна спирка</label>
+            <input
+              type="text"
+              id="end-stop"
+              class="form-input"
+              placeholder="напр. Централна гара"
+              autocomplete="off"
+              aria-describedby="end-stop-help"
+            />
+          </div>
+        
+          <div class="form-row">
+            <button
+              type="button"
+              id="reverse-direction-btn"
+              class="action-btn secondary reverse-btn flex-1"
+              title="Размени начална и крайна спирка"
+            >
+              🔁 Размени
+            </button>
+            <input type="hidden" id="direction-select" value="auto" />
+          </div>
+        
+          <button type="submit" class="action-btn submit-btn">🔎 Търси маршрут</button>
+        </form>
+        
+      
+        <div id="route-search-result" class="route-search-result"></div>
+      </div>
+      
+      
+      
+    </div>
+  </div>
+  
+  
+
+
+
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <!-- MarkerCluster JS -->
+  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+  <!-- Turf -->
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+  <!-- Custom Scripts -->
+  <script src="./utils.js"></script>
+  <script src="./templates/legend/legendTemplate.js"></script>
+  <script src="./templates/schedule/scheduleTemplate.js"></script>
+  <script src="./templates/popUp/popUpTemplate.js"></script>
+  <script src="./index.js"></script>
+</body>
 </html>
