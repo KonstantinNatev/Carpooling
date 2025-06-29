@@ -12,6 +12,7 @@ let geoLayer = null;
 window.selectedRouteLabel = "";
 let currentPopup = null;
 let popupCloseTimeout = null;
+window.searchMarkers = []; // за да изчистим маркерите при всяко търсене
 
 window.hoverLayerGroup = null;
 window.debugSettings = {
@@ -32,6 +33,119 @@ document.addEventListener("click", function (event) {
     }
   }
 });
+
+document.getElementById("reverse-direction-btn").addEventListener("click", () => {
+  const startInput = document.getElementById("start-stop");
+  const endInput = document.getElementById("end-stop");
+  const resultBox = document.getElementById("route-search-result");
+
+  // 🔁 Размени стойностите в полетата
+  const temp = startInput.value;
+  startInput.value = endInput.value;
+  endInput.value = temp;
+
+  const startName = startInput.value.trim().toLowerCase();
+  const endName = endInput.value.trim().toLowerCase();
+
+  const stops = window.allStopMarkers.map(m => m._stopData);
+  const startStop = stops.find(s => s.properties.name?.toLowerCase() === startName);
+  const endStop = stops.find(s => s.properties.name?.toLowerCase() === endName);
+  const lastRoute = window.lastMatchedRoute;
+
+  if (!startStop || !endStop || !lastRoute) return;
+
+  const reversedRoute = window.allRoutes.find(r =>
+    r.properties.line_id === lastRoute.properties.line_id &&
+    r.properties.direction !== lastRoute.properties.direction
+  );
+  if (!reversedRoute) return;
+
+  // 🧹 Премахни предишната линия
+  if (window.highlightedRoute) {
+    if (window.highlightedRoute instanceof L.FeatureGroup) {
+      window.highlightedRoute.eachLayer((layer) => {
+        if (window.map.hasLayer(layer)) window.map.removeLayer(layer);
+      });
+    } else if (window.map.hasLayer(window.highlightedRoute)) {
+      window.map.removeLayer(window.highlightedRoute);
+    }
+    window.highlightedRoute = null;
+  }
+
+  // 🧹 Премахни старите маркери
+  if (window.startMarker) {
+    window.map.removeLayer(window.startMarker);
+    window.startMarker = null;
+  }
+  if (window.endMarker) {
+    window.map.removeLayer(window.endMarker);
+    window.endMarker = null;
+  }
+
+  // 🎯 Намери координатите
+  const startLatLng = L.latLng(startStop.geometry.coordinates[1], startStop.geometry.coordinates[0]);
+  const endLatLng = L.latLng(endStop.geometry.coordinates[1], endStop.geometry.coordinates[0]);
+
+  const coords = turf.getCoords(reversedRoute.geometry);
+  const latlngs = coords.map(([lng, lat]) => L.latLng(lat, lng));
+
+  const findClosestIndex = (target) => {
+    let minDist = Infinity;
+    let closestIdx = -1;
+    latlngs.forEach((point, idx) => {
+      const dist = point.distanceTo(target);
+      if (dist < minDist) {
+        minDist = dist;
+        closestIdx = idx;
+      }
+    });
+    return closestIdx;
+  };
+
+  const startIdx = findClosestIndex(startLatLng);
+  const endIdx = findClosestIndex(endLatLng);
+  if (startIdx === -1 || endIdx === -1) return;
+
+  const [from, to] = startIdx < endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
+  const slicedCoords = coords.slice(from, to + 1);
+
+  const partialRoute = {
+    type: "Feature",
+    geometry: {
+      type: "LineString",
+      coordinates: slicedCoords,
+    },
+    properties: reversedRoute.properties,
+  };
+
+  const color = reversedRoute.properties.tr_color || "#ff6600";
+
+  // ➕ Начертай нова отсечка
+  const lineLayer = L.geoJSON(partialRoute.geometry, {
+    style: {
+      color,
+      weight: window.debugSettings.highlightWeight,
+      opacity: 1,
+    }
+  }).addTo(window.map);
+
+  window.highlightedRoute = lineLayer;
+  window.lastMatchedRoute = reversedRoute;
+  window.map.fitBounds(lineLayer.getBounds().pad(0.2));
+
+  // 🔁 Размени маркерите (синият е старт, червеният е край)
+  window.startMarker = L.marker(endLatLng, { icon: window.blueIcon }).addTo(window.map);
+  window.endMarker = L.marker(startLatLng, { icon: window.redIcon }).addTo(window.map);
+
+  // 📦 Обнови резултата
+  resultBox.innerHTML = `
+    <p><b>Линия:</b> ${reversedRoute.properties.ref}</p>
+    <p><b>Тип:</b> ${reversedRoute.properties.type}</p>
+    <p><b>Посока:</b> ${reversedRoute.properties.direction}</p>
+  `;
+});
+
+
 
 function showSchedulePanel(encodedHtml) {
   const panel = document.getElementById("schedule-panel");
@@ -266,7 +380,14 @@ window.renderStopPanel = function (stop) {
 
   const stopContent = document.getElementById("stop-info-content");
   stopContent.innerHTML = html;
-  document.getElementById("stop-info-panel").style.display = "block";
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    const tabId = btn.getAttribute('data-tab');
+    const isStopTab = tabId === "tab-stop";
+  
+    btn.classList.toggle('active', isStopTab);
+    document.getElementById(tabId)?.classList.toggle('active', isStopTab);
+  });
+  
   window.lastSelectedStop = stop;
 
   // Ако все още няма избрана линия – селектирай първата от списъка
@@ -301,9 +422,6 @@ window.renderStopPanel = function (stop) {
     });
   });
 
-  document.getElementById("stop-panel-close")?.addEventListener("click", () => {
-    document.getElementById("stop-info-panel").style.display = "none";
-  });
 };
 
 function renderMapData(data) {
@@ -458,6 +576,7 @@ function renderMapData(data) {
     marker.on("click", () => {
       window.clearMapHighlights();
       window.renderStopPanel(marker._stopData);
+      document.querySelector('[data-tab="tab-stop"]').click();
     })
 
     stopClusterGroup.addLayer(marker);
@@ -580,4 +699,134 @@ document.addEventListener("click", function (event) {
         }
       });
   }
+});
+
+
+// превключване на табовете
+document.querySelectorAll(".tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const selectedTab = btn.getAttribute("data-tab");
+
+    // Премахни всички активни табове и бутони
+    document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach((tab) => tab.classList.remove("active"));
+
+    // Активирай избрания
+    btn.classList.add("active");
+    document.getElementById(selectedTab)?.classList.add("active");
+  });
+});
+
+
+
+// търсене на марщрут
+document.getElementById("route-search-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  const startName = document.getElementById("start-stop").value.trim().toLowerCase();
+  const endName = document.getElementById("end-stop").value.trim().toLowerCase();
+  const resultBox = document.getElementById("route-search-result");
+  resultBox.innerHTML = "";
+
+  const stops = window.allStopMarkers.map(m => m._stopData);
+  const startStop = stops.find(s => s.properties.name?.toLowerCase() === startName);
+  const endStop = stops.find(s => s.properties.name?.toLowerCase() === endName);
+
+  if (!startStop || !endStop) {
+    resultBox.innerHTML = "<p>Не можахме да намерим и двете спирки.</p>";
+    return;
+  }
+
+  const startLatLng = L.latLng(startStop.geometry.coordinates[1], startStop.geometry.coordinates[0]);
+  const endLatLng = L.latLng(endStop.geometry.coordinates[1], endStop.geometry.coordinates[0]);
+
+  // Намери линии, които минават през и двете спирки
+  const startLines = startStop.properties["@relations"].map(r => r.rel);
+  const endLines = endStop.properties["@relations"].map(r => r.rel);
+  const commonLineIds = startLines.filter(rel => endLines.includes(rel));
+
+  if (commonLineIds.length === 0) {
+    resultBox.innerHTML = "<p>Няма обща линия между спирките.</p>";
+    return;
+  }
+
+  // Почисти
+  window.clearMapHighlights?.();
+  if (window.highlightedRoute) map.removeLayer(window.highlightedRoute);
+  window.searchMarkers.forEach(m => map.removeLayer(m));
+  window.searchMarkers = [];
+
+  const group = L.featureGroup();
+  window.highlightedRoute = group;
+
+  const htmlList = [];
+
+  for (const route of window.allRoutes) {
+    if (!commonLineIds.includes(route.properties.line_id)) continue;
+
+    const coords = route.geometry.coordinates; // [lng, lat]
+    const latlngs = coords.map(([lng, lat]) => L.latLng(lat, lng));
+
+    // Намиране на най-близките индекси
+    const findClosestIndex = (target) => {
+      let minDist = Infinity;
+      let closestIdx = -1;
+      latlngs.forEach((point, idx) => {
+        const dist = point.distanceTo(target);
+        if (dist < minDist) {
+          minDist = dist;
+          closestIdx = idx;
+        }
+      });
+      return closestIdx;
+    };
+
+    const startIdx = findClosestIndex(startLatLng);
+    const endIdx = findClosestIndex(endLatLng);
+    if (startIdx === -1 || endIdx === -1 || startIdx >= endIdx) continue;
+
+    const slicedCoords = coords.slice(startIdx, endIdx + 1);
+
+    const partialRoute = {
+      type: "Feature",
+      geometry: {
+        type: "LineString",
+        coordinates: slicedCoords,
+      },
+      properties: route.properties,
+    };
+
+    const color = route.properties.tr_color || "#007bff";
+    const lineLayer = L.geoJSON(partialRoute, {
+      style: {
+        color,
+        weight: window.debugSettings.highlightWeight,
+        opacity: 1,
+      }
+    }).addTo(map);
+
+    group.addLayer(lineLayer);
+
+    htmlList.push(`<li><b>${route.properties.ref}</b> (${route.properties.direction})</li>`);
+  }
+
+  if (group.getLayers().length === 0) {
+    resultBox.innerHTML = "<p>Не можахме да намерим отсечка в правилната посока между спирките.</p>";
+    return;
+  }
+
+  resultBox.innerHTML = `
+    <p><b>Маршрути между спирките:</b></p>
+    <ul>${htmlList.join("")}</ul>
+  `;
+
+  map.fitBounds(group.getBounds().pad(0.2));
+
+  // Добави маркери
+  const startMarker = L.marker(startLatLng, { icon: window.blueIcon }).addTo(map);
+  const endMarker = L.marker(endLatLng, { icon: window.redIcon }).addTo(map);
+  window.searchMarkers.push(startMarker, endMarker);
+
+  // Запази първия
+  window.lastMatchedRoute = group.getLayers()[0]?.feature;
 });
