@@ -1,10 +1,19 @@
-const map = L.map("map").setView([42.6977, 23.3219], 13);
+window.map = L.map("map").setView([42.6977, 23.3219], 13);
 
-let highlightedRoute = null;
-let startMarker = null;
-let endMarker = null;
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "&copy; OpenStreetMap contributors",
+}).addTo(window.map);
+
+window.window.highlightedRoute = null;
+window.startMarker = null;
+window.endMarker = null;
 let geoLayer = null;
-let selectedRouteLabel = "";
+window.selectedRouteLabel = "";
+let currentPopup = null;
+let popupCloseTimeout = null;
+window.searchMarkers = []; // за да изчистим маркерите при всяко търсене
+
 window.hoverLayerGroup = null;
 window.debugSettings = {
   pointSize: 5,
@@ -12,37 +21,8 @@ window.debugSettings = {
   highlightWeight: 6,
 };
 
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19,
-  attribution: "&copy; OpenStreetMap contributors",
-}).addTo(map);
-
-const clearMapHighlights = () => {
-  if (highlightedRoute) map.removeLayer(highlightedRoute);
-  if (startMarker) map.removeLayer(startMarker);
-  if (endMarker) map.removeLayer(endMarker);
-  highlightedRoute = startMarker = endMarker = null;
-  selectedRouteLabel = "";
-  updateDynamicLegend([]);
-};
-
-const updateDynamicLegend = (routeColorPairs) => {
-  const legendRoutes = document.getElementById("legend-routes");
-  if (!legendRoutes) return;
-  const selected = selectedRouteLabel
-    ? `<div style="margin-bottom:4px;"><strong style="color:#004aad;">✅ ${selectedRouteLabel}</strong></div>`
-    : "";
-  const hoverList = routeColorPairs
-    .map(
-      ([color, label]) => `
-      <div>
-        <span style="display:inline-block; width:16px; height:10px; background:${color}; margin-right:6px;"></span>
-        ${label}
-      </div>`
-    )
-    .join("");
-  legendRoutes.innerHTML = selected + hoverList;
-};
+const urlParams = new URLSearchParams(window.location.search);
+const debug = urlParams.get("debug");
 
 document.addEventListener("click", function (event) {
   const target = event.target;
@@ -53,6 +33,22 @@ document.addEventListener("click", function (event) {
     }
   }
 });
+
+document.getElementById("reverse-direction-btn").addEventListener("click", () => {
+  const startInput = document.getElementById("start-stop");
+  const endInput = document.getElementById("end-stop");
+
+  const temp = startInput.value;
+  startInput.value = endInput.value;
+  endInput.value = temp;
+
+  const startName = startInput.value.trim().toLowerCase();
+  const endName = endInput.value.trim().toLowerCase();
+
+  findMatchingRoutes(startName, endName);
+});
+
+
 
 function showSchedulePanel(encodedHtml) {
   const panel = document.getElementById("schedule-panel");
@@ -195,6 +191,142 @@ async function loadAllScrapedRoutes() {
   }
 }
 
+window.renderStopPanel = function (stop) {
+  const allRelations = stop.properties?.["@relations"] || [];
+  const stopName = stop.properties.name || "Без име";
+
+  // Остави за сега !!!
+  // Фокусирам отново точката (спирката) и зумвам на нея
+  // map.setView(
+  //   L.latLng(stop.geometry.coordinates[1], stop.geometry.coordinates[0]),
+  //   Math.max(map.getZoom(), 16),
+  //   { animate: true }
+  // );
+
+  // Ресет на всички маркери
+  window.allStopMarkers.forEach((m) =>
+    m.setStyle({ color: "#343a40", weight: window.debugSettings.pointSize })
+  );
+
+  // Активен маркер
+  const matchedMarker = window.allStopMarkers.find((m) => m._stopData === stop);
+  if (matchedMarker) {
+    matchedMarker.setStyle({
+      color: "#007bff",
+      weight: window.debugSettings.pointSize + 2,
+    });
+  }
+
+  // Обновяване на име на спирка
+  document.getElementById("stop-name").textContent = stopName;
+
+  const routes = window.allRoutes;
+  const selectedRouteId = window.selectedRouteLabel; // 🔧 вярно прочетено
+  const lineGroups = allRelations.reduce((acc, rel) => {
+    if (!acc[rel.ref]) acc[rel.ref] = [];
+    acc[rel.ref].push(rel);
+    return acc;
+  }, {});
+
+  const iconMap = {
+    tram: "🚋",
+    trolleybus: "🚎",
+    bus: "🚌",
+  };
+
+  let html = "";
+  Object.entries(lineGroups).forEach(([lineLabel, group]) => {
+    html += `
+      <div class="panel-section">
+        <div class="panel-header">
+          <span class="line-ref">${lineLabel}</span>
+        </div>
+        <div class="line-items">
+    `;
+
+    group.forEach((rel) => {
+      const route = routes.find(
+        (r) =>
+          r.properties.line_id === rel.rel &&
+          r.properties.direction === rel.direction
+      );
+      if (!route) return;
+
+      const routeId = route.properties["@id"];
+      const icon = iconMap[route.properties.type] || "🚌";
+      const isSelected = routeId === selectedRouteId;
+
+      html += `
+        <div class="line-item ${isSelected ? "active" : ""}">
+          <div class="line-info">
+            <span class="line-icon">${icon}</span>
+            <span class="line-direction">${rel.direction}</span>
+            ${isSelected ? `<span class="line-tag">Избран</span>` : ""}
+          </div>
+          <div class="line-actions">
+            <button 
+              class="action-btn preview-btn ${isSelected ? "selected" : ""}" 
+              data-route-id="${routeId}"
+              onclick="window.highlightRoute('${routeId}')">
+              ${isSelected ? "Премахни" : "Преглед"}
+            </button>
+            <button class="action-btn secondary schedule-btn" data-schedule-html="${encodeURIComponent(
+              window.scheduleTemplate([rel])
+            )}">Разписание</button>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `</div></div>`;
+  });
+
+  const stopContent = document.getElementById("stop-info-content");
+  stopContent.innerHTML = html;
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    const tabId = btn.getAttribute('data-tab');
+    const isStopTab = tabId === "tab-stop";
+  
+    btn.classList.toggle('active', isStopTab);
+    document.getElementById(tabId)?.classList.toggle('active', isStopTab);
+  });
+  
+  window.lastSelectedStop = stop;
+
+  // Ако все още няма избрана линия – селектирай първата от списъка
+  if (!window.selectedRouteLabel) {
+    const firstBtn = document.querySelector(".preview-btn");
+    if (firstBtn) {
+      const firstRouteId = firstBtn.getAttribute("data-route-id");
+      if (firstRouteId) {
+        window.highlightRoute(firstRouteId);
+      }
+    }
+  }
+
+  //  Остави го за сега !!!
+  //
+  //  Добавяме event listeners след DOM рендерирането
+  // document.querySelectorAll(".preview-btn").forEach((btn) => {
+  //   btn.addEventListener("click", () => {
+  //     const routeId = btn.getAttribute("data-route-id");
+  //     if (routeId) {
+  //       window.highlightRoute(routeId); //  преизареди renderStopPanel
+  //     }
+  //   });
+  // });
+
+  document.querySelectorAll(".schedule-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const html = btn.getAttribute("data-schedule-html");
+      if (html) {
+        showSchedulePanel(html);
+      }
+    });
+  });
+
+};
+
 function renderMapData(data) {
   const stops = data.features.filter((f) => f.geometry.type === "Point");
   const routes = data.features.filter((f) => f.geometry.type.includes("Line"));
@@ -207,23 +339,44 @@ function renderMapData(data) {
   }).addTo(map);
 
   window.allRoutes = routes;
+
   window.highlightRoute = (routeId) => {
-    clearMapHighlights();
+    if (window.selectedRouteLabel && window.selectedRouteLabel.includes(routeId)) {
+      console.error("same route clicked → deselecting");
+      window.clearMapHighlights();
+      return;
+    }
+
+    window.clearMapHighlights();
+  
     const selectedRoute = window.allRoutes.find(
       (r) => r.properties?.["@id"] === routeId
     );
     if (!selectedRoute) return;
-
+  
     const color = selectedRoute.properties.tr_color || window.getRouteColor(1);
-
-    highlightedRoute = L.geoJSON(selectedRoute.geometry, {
+  
+    window.highlightedRoute = L.geoJSON(selectedRoute.geometry, {
       style: {
         color,
         weight: window.debugSettings.highlightWeight,
         opacity: 1,
       },
     }).addTo(map);
-
+  
+    if (Array.isArray(window.allStopMarkers)) {
+      window.allStopMarkers.forEach((marker) => {
+        marker.bringToFront();
+      });
+    }
+  
+    window.highlightedRoute.on("click", () => {
+      window.clearMapHighlights();
+      if (window.lastSelectedStop) {
+        window.renderStopPanel(window.lastSelectedStop);
+      }
+    });
+  
     const coords = turf.getCoords(selectedRoute.geometry);
     const [firstCoord, lastCoord] =
       selectedRoute.geometry.type === "LineString"
@@ -232,28 +385,35 @@ function renderMapData(data) {
             const longest = coords.sort((a, b) => b.length - a.length)[0];
             return [longest[0], longest[longest.length - 1]];
           })();
-
-    startMarker = L.marker([firstCoord[1], firstCoord[0]], {
+  
+    window.startMarker = L.marker([firstCoord[1], firstCoord[0]], {
       icon: window.blueIcon,
     }).addTo(map);
-
-    endMarker = L.marker([lastCoord[1], lastCoord[0]], {
+  
+    window.endMarker = L.marker([lastCoord[1], lastCoord[0]], {
       icon: window.redIcon,
     }).addTo(map);
-
-    const { ref = "?", from = "-", to = "-" } = selectedRoute.properties;
-    selectedRouteLabel = `Маршрут ${ref}: ${selectedRoute.properties.direction}`;
-    updateDynamicLegend([]);
+  
+    window.updateDynamicLegend([]);
+    window.selectedRouteLabel = routeId;
+  
+    if (window.lastSelectedStop) {
+      window.renderStopPanel(window.lastSelectedStop);
+    }
   };
 
   window.allStopMarkers = [];
 
+  const stopClusterGroup = L.markerClusterGroup({
+    disableClusteringAtZoom: 18, // автоматично показва маркерите при по-близък zoom
+  });
+  map.addLayer(stopClusterGroup);
   stops.forEach((stop) => {
     const latlng = L.latLng(
       stop.geometry.coordinates[1],
       stop.geometry.coordinates[0]
     );
-
+  
     const marker = L.circleMarker(latlng, {
       radius: window.debugSettings.pointSize,
       fillColor: "#ffc107",
@@ -261,7 +421,7 @@ function renderMapData(data) {
       weight: window.debugSettings.pointSize,
       opacity: 1,
       fillOpacity: 0.9,
-    }).addTo(map);
+    });
 
     marker._stopData = stop;
     window.allStopMarkers.push(marker);
@@ -269,8 +429,13 @@ function renderMapData(data) {
     const allRelations = stop.properties?.["@relations"] || [];
 
     marker.on("mouseover", () => {
+      clearTimeout(popupCloseTimeout);
+
       const { html } = window.popUpTemplate(stop, routes);
-      marker._popup = L.popup().setLatLng(latlng).setContent(html).openOn(map);
+      marker._popup = L.popup({
+        closeButton: false,
+        autoClose: false,
+      }).setLatLng(latlng).setContent(html).openOn(map);
 
       const relIds = allRelations.map((r) => r.rel);
       const matchedRoutes = routes.filter((r) =>
@@ -297,84 +462,74 @@ function renderMapData(data) {
         routeColorPairs.push([color, `Маршрут ${ref}: ${direction}`]);
       });
 
-      updateDynamicLegend(routeColorPairs);
+      window.updateDynamicLegend(routeColorPairs);
+    });
 
-      marker.once("mouseout", () => {
+    marker.on("mouseout", () => {
+      popupCloseTimeout = setTimeout(() => {
         if (window.hoverLayerGroup) {
           map.removeLayer(window.hoverLayerGroup);
           window.hoverLayerGroup = null;
         }
-        updateDynamicLegend([]);
+        window.updateDynamicLegend([]);
         if (marker._popup) map.closePopup(marker._popup);
-      });
+      }, 200);
     });
 
     marker.on("click", () => {
-      const { html, scheduleHtml } = window.popUpTemplate(stop, routes);
+      window.clearMapHighlights();
+      window.renderStopPanel(marker._stopData);
+      document.querySelector('[data-tab="tab-stop"]').click();
+    })
 
-      const popup = L.popup({ closeButton: false })
-        .setLatLng(latlng)
-        .setContent(html);
-
-      popup.on("add", () => {
-        const btn = document.getElementById("btn-schedule-view");
-        if (btn) {
-          btn.addEventListener("click", () => {
-            showSchedulePanel(scheduleHtml);
-          });
-        }
-      });
-
-      popup.openOn(map);
-    });
+    stopClusterGroup.addLayer(marker);
   });
-
-  document.querySelectorAll(".route-type").forEach((cb) => {
-    cb.addEventListener("change", () => {
-      const checkedTypes = Array.from(
-        document.querySelectorAll(".route-type:checked")
-      ).map((cb) => cb.value.trim().toLowerCase());
-
-      if (!geoLayer) return;
-
-      geoLayer.clearLayers();
-      const filteredRoutes = window.allRoutes.filter((feature) => {
-        const rawType = feature.properties.type || "";
-        const normalized = rawType.trim().toLowerCase().replace(/[\s_]/g, "");
-        return checkedTypes.includes(normalized);
-      });
-      geoLayer.addData(filteredRoutes);
-
-      window.allStopMarkers.forEach((marker) => {
-        const stop = marker._stopData;
-        const relations = stop?.properties?.["@relations"] || [];
-
-        const isMatch = relations.some((rel) =>
-          checkedTypes.includes(
-            (
-              window.allRoutes.find((r) => r.properties.line_id === rel.rel)
-                ?.properties?.type || ""
-            )
-              .trim()
-              .toLowerCase()
-              .replace(/[\s_]/g, "")
+  const filterRoutesAndStops = () => {
+    const checkedTypes = Array.from(
+      document.querySelectorAll(".route-type:checked")
+    ).map((cb) => cb.value.trim().toLowerCase());
+  
+    if (!geoLayer) return;
+  
+    // Обновяване на маршрутите
+    geoLayer.clearLayers();
+    const filteredRoutes = window.allRoutes.filter((feature) => {
+      const rawType = feature.properties.type || "";
+      const normalized = rawType.trim().toLowerCase().replace(/[\s_]/g, "");
+      return checkedTypes.includes(normalized);
+    });
+    geoLayer.addData(filteredRoutes);
+  
+    // Обновяване на спирките
+    window.allStopMarkers.forEach((marker) => {
+      const stop = marker._stopData;
+      const relations = stop?.properties?.["@relations"] || [];
+  
+      const isMatch = relations.some((rel) =>
+        checkedTypes.includes(
+          (
+            window.allRoutes.find((r) => r.properties.line_id === rel.rel)
+              ?.properties?.type || ""
           )
-        );
-
-        if (isMatch) {
-          if (!map.hasLayer(marker)) marker.addTo(map);
-        } else {
-          if (map.hasLayer(marker)) map.removeLayer(marker);
-        }
-      });
+            .trim()
+            .toLowerCase()
+            .replace(/[\s_]/g, "")
+        )
+      );
+  
+      if (isMatch) {
+        if (!stopClusterGroup.hasLayer(marker)) stopClusterGroup.addLayer(marker);
+      } else {
+        if (stopClusterGroup.hasLayer(marker)) stopClusterGroup.removeLayer(marker);
+      }
     });
-  });
-
+  };
+  
+  // Слушатели за чекбокси
   document.querySelectorAll(".route-type").forEach((cb) => {
-    cb.addEventListener("change", () => {
-      document.getElementById("applySettingsBtn").click();
-    });
+    cb.addEventListener("change", filterRoutesAndStops);
   });
+
 }
 
 const legend = L.control({ position: "bottomright" });
@@ -388,6 +543,13 @@ legend.addTo(map);
 loadAllScrapedRoutes();
 
 document.addEventListener("DOMContentLoaded", () => {
+  if (debug !== "true") {
+    const debugPanel = document.getElementById("debbug-panel");
+    if (debugPanel) {
+      debugPanel.style.display = "none";
+    }
+  }
+
   const { pointSize, lineWeight, highlightWeight } = debugSettings;
   document.getElementById("pointSizeInput").value = pointSize;
   document.getElementById("lineWeightInput").value = lineWeight;
@@ -433,11 +595,148 @@ document.addEventListener("click", function (event) {
         }
 
         // Обновяване на маркирания маршрут (ако има)
-        if (highlightedRoute) {
-          highlightedRoute.setStyle({
+        if (window.highlightedRoute) {
+          window.highlightedRoute.setStyle({
             weight: highlightWeight,
           });
         }
       });
   }
 });
+
+function findMatchingRoutes(startName, endName) {
+  const resultBox = document.getElementById("route-search-result");
+  resultBox.innerHTML = "";
+  resultBox.style.display = "none";
+
+  const stops = window.allStopMarkers.map(m => m._stopData);
+  const startCandidates = stops.filter(s => s.properties.name?.toLowerCase() === startName);
+  const endCandidates = stops.filter(s => s.properties.name?.toLowerCase() === endName);
+
+  if (startCandidates.length === 0 || endCandidates.length === 0) {
+    resultBox.innerHTML = "<p>Не можахме да намерим и двете спирки.</p>";
+    resultBox.style.display = "block";
+    return;
+  }
+
+  // 🧹 Почисти
+  window.clearMapHighlights?.();
+  if (window.highlightedRoute) map.removeLayer(window.highlightedRoute);
+  window.searchMarkers.forEach(m => map.removeLayer(m));
+  window.searchMarkers = [];
+
+  const group = L.featureGroup();
+  window.highlightedRoute = group;
+  const htmlList = [];
+  let firstCoord = null;
+  let lastCoord = null;
+  let found = false;
+
+  for (const route of window.allRoutes) {
+    const coords = route.geometry.coordinates;
+    const latlngs = coords.map(([lng, lat]) => L.latLng(lat, lng));
+
+    const findClosestIndex = (target) => {
+      let minDist = Infinity;
+      let closestIdx = -1;
+      latlngs.forEach((point, idx) => {
+        const dist = point.distanceTo(target);
+        if (dist < minDist) {
+          minDist = dist;
+          closestIdx = idx;
+        }
+      });
+      return closestIdx;
+    };
+
+    for (const startStop of startCandidates) {
+      for (const endStop of endCandidates) {
+        const startRel = startStop.properties["@relations"].find(r => r.rel === route.properties.line_id && r.direction === route.properties.direction);
+        const endRel = endStop.properties["@relations"].find(r => r.rel === route.properties.line_id && r.direction === route.properties.direction);
+        if (!startRel || !endRel) continue;
+
+        const startLatLng = L.latLng(startStop.geometry.coordinates[1], startStop.geometry.coordinates[0]);
+        const endLatLng = L.latLng(endStop.geometry.coordinates[1], endStop.geometry.coordinates[0]);
+
+        const startIdx = findClosestIndex(startLatLng);
+        const endIdx = findClosestIndex(endLatLng);
+        if (startIdx === -1 || endIdx === -1 || startIdx >= endIdx) continue;
+
+        const slicedCoords = coords.slice(startIdx, endIdx + 1);
+
+        if (!firstCoord && slicedCoords.length > 0) {
+          firstCoord = slicedCoords[0];
+          lastCoord = slicedCoords[slicedCoords.length - 1];
+        }
+
+        const partialRoute = {
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: slicedCoords,
+          },
+          properties: route.properties,
+        };
+
+        const color = route.properties.tr_color || "#007bff";
+        const lineLayer = L.geoJSON(partialRoute, {
+          style: {
+            color,
+            weight: window.debugSettings.highlightWeight,
+            opacity: 1,
+          }
+        }).addTo(map);
+
+        group.addLayer(lineLayer);
+        htmlList.push(`<li><b>${route.properties.ref}</b> (${route.properties.direction})</li>`);
+        window.lastMatchedRoute = route;
+        found = true;
+      }
+    }
+  }
+
+  if (!found) {
+    resultBox.innerHTML = "<p>Не можахме да намерим отсечка между тези спирки в правилната посока.</p>";
+    resultBox.style.display = "block";
+    return;
+  }
+
+  resultBox.innerHTML = `
+    <p><b>Маршрути между спирките:</b></p>
+    <ul>${htmlList.join("")}</ul>
+  `;
+  resultBox.style.display = "block";
+
+  map.fitBounds(group.getBounds().pad(0.2));
+
+  if (firstCoord && lastCoord) {
+    const startMarker = L.marker([firstCoord[1], firstCoord[0]], { icon: window.blueIcon }).addTo(map);
+    const endMarker = L.marker([lastCoord[1], lastCoord[0]], { icon: window.redIcon }).addTo(map);
+    window.searchMarkers.push(startMarker, endMarker);
+  }
+}
+
+
+
+// превключване на табовете
+document.querySelectorAll(".tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const selectedTab = btn.getAttribute("data-tab");
+
+    // Премахни всички активни табове и бутони
+    document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach((tab) => tab.classList.remove("active"));
+
+    // Активирай избрания
+    btn.classList.add("active");
+    document.getElementById(selectedTab)?.classList.add("active");
+  });
+});
+
+document.getElementById("route-search-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const startName = document.getElementById("start-stop").value.trim().toLowerCase();
+  const endName = document.getElementById("end-stop").value.trim().toLowerCase();
+  findMatchingRoutes(startName, endName);
+});
+

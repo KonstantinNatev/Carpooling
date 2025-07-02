@@ -2,59 +2,38 @@ window.popUpTemplate = (stop, routes) => {
   const name = stop.properties.name || "Неизвестна спирка";
   const allRelations = stop.properties?.["@relations"] || [];
 
-  const groupedByLine = allRelations.reduce((acc, rel) => {
-    if (!acc[rel.ref]) acc[rel.ref] = [];
-    acc[rel.ref].push(rel.rel);
-    return acc;
-  }, {});
-
-  const allLines = Object.entries(groupedByLine)
-    .map(([lineLabel, lineIds]) => {
-      const matchedRoutes = routes.filter((r) =>
-        lineIds.includes(r.properties?.line_id)
+  const uniqueLines = allRelations
+    .map((rel) => {
+      const route = routes.find(
+        (r) =>
+          r.properties.line_id === rel.rel &&
+          r.properties.direction === rel.direction
       );
-      const buttons = matchedRoutes
-        .map((route) => {
-          const { direction = "", type = "" } = route.properties;
-          const icon = type === "tram" ? "🚋" : "🚌";
-          return `
-            <button
-              onclick="window.highlightRoute('${route.properties["@id"]}')" 
-              class="direction-button">
-              ${icon} <span>${direction}</span>
-            </button>
-          `;
-        })
-        .join("");
+      if (!route) return null;
 
-      return `
-        <div class="line-group">
-          <div class="line-label">Линия: ${lineLabel}</div>
-          ${buttons}
-        </div>
-      `;
+      const ref = route.properties.ref || "?";
+      const color = route.properties.tr_color || "#888";
+      return { ref, color };
     })
-    .join("");
+    .filter(Boolean)
+    .reduce((acc, curr) => {
+      if (!acc.some((l) => l.ref === curr.ref)) acc.push(curr);
+      return acc;
+    }, []);
 
-  const scheduleHtml = window.scheduleTemplate(allRelations);
+  const lineBadges = uniqueLines
+    .map(
+      ({ ref, color }) =>
+        `<span class="line-badge" style="background:${color}">${ref}</span>`
+    )
+    .join("");
 
   const html = `
     <div class="popup-container">
-      <button onclick="this.closest('.leaflet-popup').remove();" class="popup-close-btn">✖</button>
-      <div class="popup-inner">
-        <div class="popup-title">Спирка: ${name}</div>
-        <div class="popup-subtitle">Избери посока:</div>
-        ${allLines}
-        <hr>
-        <div class="schedule-label">Разписание:</div>
-        <button id="btn-schedule-view"
-          data-schedule-html="${encodeURIComponent(scheduleHtml)}"
-          class="schedule-btn">
-          Виж пълно разписание
-        </button>
-      </div>
+      <div class="popup-title">📍 ${name}</div>
+      <div class="popup-badges">${lineBadges || "<em>Няма налични линии</em>"}</div>
     </div>
   `;
 
-  return { html, scheduleHtml };
+  return { html }; // scheduleHtml вече не е нужен за hover
 };
