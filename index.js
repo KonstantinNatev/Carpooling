@@ -65,13 +65,13 @@ function showSchedulePanel(encodedHtml) {
 
 async function loadAllScrapedRoutes() {
   try {
-    const res = await fetch("/schedules/index.json");
+    const res = await fetch("schedules/index.json");
     const files = await res.json();
     const allStops = [];
     const allRoutes = [];
 
     for (const file of files) {
-      const data = await fetch(`/schedules/${file}`).then((r) => r.json());
+      const data = await fetch(`schedules/${file}`).then((r) => r.json());
       const routes = data.routes || [];
 
       for (const route of routes) {
@@ -544,7 +544,7 @@ loadAllScrapedRoutes();
 
 document.addEventListener("DOMContentLoaded", () => {
   if (debug !== "true") {
-    const debugPanel = document.getElementById("debbug-panel");
+    const debugPanel = document.getElementById("debug-panel");
     if (debugPanel) {
       debugPanel.style.display = "none";
     }
