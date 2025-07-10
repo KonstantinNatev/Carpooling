@@ -16,7 +16,7 @@ window.searchMarkers = []; // за да изчистим маркерите пр
 
 window.hoverLayerGroup = null;
 window.debugSettings = {
-  pointSize: 5,
+  pointSize: 10,
   lineWeight: 4,
   highlightWeight: 6,
 };
