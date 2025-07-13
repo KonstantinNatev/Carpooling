@@ -78,6 +78,21 @@ window.clearMapHighlights = function () {
       })
     );
   }
+
+  // 🧹 Почисти спирките, показани само за избрания маршрут
+  if (Array.isArray(window.highlightedStopMarkers)) {
+    window.highlightedStopMarkers.forEach((marker) => {
+      if (window.map.hasLayer(marker)) {
+        window.map.removeLayer(marker);
+      }
+    });
+    window.highlightedStopMarkers = [];
+  }
+
+  if (window.highlightedStopLayerGroup) {
+    window.highlightedStopLayerGroup.clearLayers();
+  }
+  
 };
 
 
