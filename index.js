@@ -1454,3 +1454,23 @@ function showStopsForLine(ref) {
 
   console.table(list);
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  const infoPanel = document.getElementById("info-panel");
+  const expandBtn = document.getElementById("expand-info-btn");
+
+  if (infoPanel && expandBtn) {
+    expandBtn.addEventListener("click", () => {
+      const isCollapsed = infoPanel.classList.contains("collapsed");
+      infoPanel.classList.toggle("collapsed", !isCollapsed);
+      infoPanel.classList.toggle("expanded", isCollapsed);
+      expandBtn.textContent = isCollapsed ? "⬇️" : "⬆️";
+    });
+
+    // по подразбиране на мобилно: collapsed
+    if (window.innerWidth <= 768) {
+      infoPanel.classList.add("collapsed");
+    }
+  }
+});
+
