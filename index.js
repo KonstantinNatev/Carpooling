@@ -861,7 +861,9 @@ function createLineItemHTML({ icon, route, step, stops }) {
 
 
 async function findMatchingRoutes(startStopName, endStopName) {
+  window.clearMapHighlights?.();
   const stops = window.allStopMarkers.map(m => m._stopData);
+  
   const resultBox = document.getElementById("route-search-result");
   resultBox.innerHTML = "";
   resultBox.style.display = "none";
@@ -1285,7 +1287,6 @@ document.getElementById("route-search-form").addEventListener("submit", (e) => {
     return;
   }
 
-
   // 🧹 Изчистваме предишни резултати
   window.clearMapHighlights?.();
   if (window.highlightedRoute) map.removeLayer(window.highlightedRoute);
@@ -1354,7 +1355,6 @@ document.getElementById("route-search-form").addEventListener("submit", (e) => {
 
     group.addLayer(layer);
   }
-
 
   // 🔎 Фокус върху маршрута
   map.fitBounds(group.getBounds().pad(0.2));
@@ -1473,4 +1473,3 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
-

@@ -92,7 +92,6 @@ window.clearMapHighlights = function () {
   if (window.highlightedStopLayerGroup) {
     window.highlightedStopLayerGroup.clearLayers();
   }
-  
 };
 
 

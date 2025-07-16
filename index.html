@@ -62,11 +62,12 @@
 <body>
   <div id="map"></div>
 
-  <div id="schedule-panel" style="display: none; position: fixed; top: 0; right: 0; width: 340px; height: 100vh; background: #f9f9f9; border-left: 1px solid #e0e0e0; overflow-y: auto; z-index: 1002; box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1); padding: 24px 16px 16px 16px; font-family: sans-serif;">
-    <button onclick="document.getElementById('schedule-panel').style.display='none'" style="position: absolute; top: 12px; right: 12px; background: transparent; border: none; font-size: 20px; cursor: pointer; color: #555;" aria-label="Close">✖</button>
-    <h2 style="margin-top: 0; font-size: 20px; font-weight: 600; color: #333">Разписание</h2>
-    <div id="schedule-content" style="margin-top: 16px"></div>
+  <div id="schedule-panel" class="schedule-panel">
+    <button onclick="document.getElementById('schedule-panel').style.display='none'" class="schedule-close-btn" aria-label="Close">✖</button>
+    <h2 class="schedule-title">Разписание</h2>
+    <div id="schedule-content" class="schedule-content"></div>
   </div>
+  
 
   <div id="filter-panel" style="
     position: absolute;
