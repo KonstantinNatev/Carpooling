@@ -1,4 +1,4 @@
-window.scheduleTemplate = (allRelations) => {
+window.scheduleTemplate = (allRelations, stopName = "") => {
   if (!allRelations.length)
     return `<em class="empty-state">Няма налично разписание</em>`;
 
@@ -30,7 +30,10 @@ window.scheduleTemplate = (allRelations) => {
         return `
             <div class="schedule-group">
                 <div class="schedule-group-title">
-                    Маршрут ${relation.ref}: ${relation.direction}
+                    Спирка <b>${stopName}</b>
+                    </br>
+                    </br>
+                    Маршрут <b>${relation.ref}</b>: ${relation.direction}
                 </div>
                 ${blocks}
             </div>`;

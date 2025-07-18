@@ -62,11 +62,12 @@
 <body>
   <div id="map"></div>
 
-  <div id="schedule-panel" style="display: none; position: fixed; top: 0; right: 0; width: 340px; height: 100vh; background: #f9f9f9; border-left: 1px solid #e0e0e0; overflow-y: auto; z-index: 1002; box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1); padding: 24px 16px 16px 16px; font-family: sans-serif;">
-    <button onclick="document.getElementById('schedule-panel').style.display='none'" style="position: absolute; top: 12px; right: 12px; background: transparent; border: none; font-size: 20px; cursor: pointer; color: #555;" aria-label="Close">✖</button>
-    <h2 style="margin-top: 0; font-size: 20px; font-weight: 600; color: #333">Разписание</h2>
-    <div id="schedule-content" style="margin-top: 16px"></div>
+  <div id="schedule-panel" class="schedule-panel">
+    <button onclick="document.getElementById('schedule-panel').style.display='none'" class="schedule-close-btn" aria-label="Close">✖</button>
+    <h2 class="schedule-title">Разписание</h2>
+    <div id="schedule-content" class="schedule-content"></div>
   </div>
+  
 
   <div id="filter-panel" style="
     position: absolute;
@@ -95,7 +96,7 @@
     </div>
   </div>
 
-  <div id="debug-panel" style="position: absolute; top: 10px; left: 40%; z-index: 1001; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); padding: 16px 14px; width: 220px; font-family: 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.5;">
+  <div id="debug-panel" style="position: absolute; top: 30%; right: 20px; z-index: 10000; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); padding: 16px 14px; width: 220px; font-family: 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.5;">
     <h3 style="margin-top: 0; font-size: 15px; color: #333; margin-bottom: 12px">⚙️ Настройки</h3>
 
     <label for="pointSizeInput" style="display: block; margin-bottom: 6px">Размер на спирките:</label>
@@ -112,6 +113,9 @@
 
 
   <div id="info-panel" class="info-panel">
+    <div id="info-panel-toggle" class="info-panel-toggle">
+      <button id="expand-info-btn" aria-label="Превключи панела">⬆️</button>
+    </div>
     <div class="info-panel-header">
       <h3>Панел с табове</h3>
       <div class="tab-nav">
@@ -119,6 +123,9 @@
         <button class="tab-btn" data-tab="tab-extra">ℹ️ Инфо</button>
       </div>
     </div>
+
+
+
     <div class="info-panel-content">
       <div id="tab-stop" class="tab-content active">
         <h4 id="stop-name">Име на спирка</h4>
@@ -139,6 +146,7 @@
               placeholder="напр. Орлов мост"
               autocomplete="off"
               aria-describedby="start-stop-help"
+              value="Ж.К. ОВЧА КУПЕЛ-2"
             />
           </div>
         
@@ -151,6 +159,7 @@
               placeholder="напр. Централна гара"
               autocomplete="off"
               aria-describedby="end-stop-help"
+              value="УЛ. ДАМЯНИЦА"
             />
           </div>
         

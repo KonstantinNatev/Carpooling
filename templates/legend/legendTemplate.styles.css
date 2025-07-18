@@ -28,3 +28,9 @@
   width: 12px;
   vertical-align: middle;
 }
+
+@media (max-width: 768px) {
+  .legend-container {
+    display: none;
+  }
+}
