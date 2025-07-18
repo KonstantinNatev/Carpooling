@@ -31,60 +31,63 @@ window.redIcon = new L.Icon({
 });
 
 window.clearMapHighlights = function () {
-  // 🧹 Почисти основния маршрут
-  if (window.highlightedRoute) {
-    if (window.highlightedRoute instanceof L.LayerGroup) {
-      window.highlightedRoute.eachLayer((layer) => {
-        if (window.map.hasLayer(layer)) window.map.removeLayer(layer);
-      });
-      window.map.removeLayer(window.highlightedRoute);
-    } else if (window.map.hasLayer(window.highlightedRoute)) {
-      window.map.removeLayer(window.highlightedRoute);
+  // 🧹 Почисти слоеве от търсене
+  if (Array.isArray(window.foundRouteLayers)) {
+    window.foundRouteLayers.forEach((layer) => {
+      if (!layer) return;
+
+      // Изчисти вътрешните слоеве
+      if (typeof layer.eachLayer === "function") {
+        layer.eachLayer((subLayer) => {
+          if (map.hasLayer(subLayer)) {
+            map.removeLayer(subLayer);
+          }
+        });
+      }
+
+      if (map.hasLayer(layer)) {
+        map.removeLayer(layer);
+      }
+    });
+    window.foundRouteLayers = [];
+
+    const resultBox = document.getElementById("route-search-result");
+    if (resultBox) {
+      resultBox.innerHTML = "";
+      resultBox.style.display = "none";
     }
   }
 
-  // 🧹 Почисти старт и край маркери
-  if (window.startMarker && window.map.hasLayer(window.startMarker)) {
-    window.map.removeLayer(window.startMarker);
-  }
-  if (window.endMarker && window.map.hasLayer(window.endMarker)) {
-    window.map.removeLayer(window.endMarker);
+  // 🧹 Изчистване на всички други слоеве
+  if (window.highlightedRoute) {
+    if (typeof window.highlightedRoute.eachLayer === "function") {
+      window.highlightedRoute.eachLayer((l) => {
+        if (map.hasLayer(l)) map.removeLayer(l);
+      });
+    }
+    if (map.hasLayer(window.highlightedRoute)) {
+      map.removeLayer(window.highlightedRoute);
+    }
+    window.highlightedRoute = null;
   }
 
-  // 🧹 Почисти hover слой
-  if (window.hoverLayerGroup && window.map.hasLayer(window.hoverLayerGroup)) {
-    window.map.removeLayer(window.hoverLayerGroup);
-    window.hoverLayerGroup = null;
+  if (window.startMarker && map.hasLayer(window.startMarker)) {
+    map.removeLayer(window.startMarker);
+  }
+  if (window.endMarker && map.hasLayer(window.endMarker)) {
+    map.removeLayer(window.endMarker);
   }
 
-  // 🧹 Почисти търсачка маркери
   if (Array.isArray(window.searchMarkers)) {
     window.searchMarkers.forEach((m) => {
-      if (window.map.hasLayer(m)) window.map.removeLayer(m);
+      if (map.hasLayer(m)) map.removeLayer(m);
     });
     window.searchMarkers = [];
   }
 
-  window.highlightedRoute = window.startMarker = window.endMarker = null;
-  window.selectedRouteLabel = "";
-  window.updateDynamicLegend?.([]);
-
-  // 🔄 Възстанови стиловете на спирките
-  if (Array.isArray(window.allStopMarkers)) {
-    window.allStopMarkers.forEach((m) =>
-      m.setStyle({
-        color: "#343a40",
-        weight: window.debugSettings.pointSize,
-      })
-    );
-  }
-
-  // 🧹 Почисти спирките, показани само за избрания маршрут
   if (Array.isArray(window.highlightedStopMarkers)) {
-    window.highlightedStopMarkers.forEach((marker) => {
-      if (window.map.hasLayer(marker)) {
-        window.map.removeLayer(marker);
-      }
+    window.highlightedStopMarkers.forEach((m) => {
+      if (map.hasLayer(m)) map.removeLayer(m);
     });
     window.highlightedStopMarkers = [];
   }
@@ -92,8 +95,22 @@ window.clearMapHighlights = function () {
   if (window.highlightedStopLayerGroup) {
     window.highlightedStopLayerGroup.clearLayers();
   }
-};
 
+  // ⚙️ Възстанови стиловете на спирките
+  if (Array.isArray(window.allStopMarkers)) {
+    window.allStopMarkers.forEach((m) => {
+      m.setStyle({
+        color: "#343a40",
+        weight: window.debugSettings.pointSize,
+      });
+    });
+  }
+
+  window.startMarker = null;
+  window.endMarker = null;
+  window.selectedRouteLabel = "";
+  window.updateDynamicLegend?.([]);
+};
 
 window.updateDynamicLegend = (routeColorPairs) => {
   const legendRoutes = document.getElementById("legend-routes");
