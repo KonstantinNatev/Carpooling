@@ -53,8 +53,7 @@ window.clearMapHighlights = function () {
 
     const resultBox = document.getElementById("route-search-result");
     if (resultBox) {
-      resultBox.innerHTML = "";
-      resultBox.style.display = "none";
+      resultBox.remove(); // ✔️ Ок
     }
   }
 

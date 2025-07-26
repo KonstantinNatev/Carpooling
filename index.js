@@ -871,10 +871,17 @@ window.foundRouteLayers = [];
 async function findMatchingRoutes(startStopName, endStopName) {
   window.clearMapHighlights();
   const stops = window.allStopMarkers.map((m) => m._stopData);
+ 
+  let resultBox = document.getElementById("route-search-result");
+  if (!resultBox) {
+    resultBox = document.createElement("div");
+    resultBox.id = "route-search-result";
+    resultBox.className = "route-search-result";
+    const tabExtra = document.getElementById("tab-extra");
+    if (tabExtra) tabExtra.appendChild(resultBox);
+  }
 
-  const resultBox = document.getElementById("route-search-result");
   resultBox.innerHTML = "";
-  resultBox.style.display = "none";
 
   const normalize = (name) => name.trim().toLowerCase();
   const startCandidates = stops.filter(
@@ -1350,7 +1357,6 @@ document.getElementById("route-search-form").addEventListener("submit", (e) => {
   }
 
   // 🧹 Изчистваме предишни резултати
-  window.clearMapHighlights();
   if (window.highlightedRoute) map.removeLayer(window.highlightedRoute);
   window.searchMarkers.forEach((m) => map.removeLayer(m));
   window.searchMarkers = [];

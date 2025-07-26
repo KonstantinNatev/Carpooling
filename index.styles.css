@@ -453,8 +453,7 @@
     z-index: 1005;
     transition: height 0.3s ease;
     height: 200px;
-    max-height: 90vh;
-    overflow-y: auto;
+    max-height: 90%;
   }
 
   .info-panel.collapsed {
@@ -462,7 +461,7 @@
   }
 
   .info-panel.expanded {
-    height: 90vh;
+    height: 90%;
   }
 
   .info-panel-toggle {
@@ -471,6 +470,21 @@
     padding: 6px;
     border-bottom: 1px solid #ddd;
   }
+
+  .info-panel-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  
+  .tab-content {
+    flex: 0 0 auto;
+  }
+  
+  #tab-extra {
+    flex: 1 1 auto;
+    overflow-y: auto;
+  }  
 
   #expand-info-btn {
     font-size: 18px;
