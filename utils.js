@@ -32,24 +32,24 @@ window.redIcon = new L.Icon({
 
 window.clearMapHighlights = function () {
   // 🧹 Почисти слоеве от търсене
-  if (Array.isArray(window.foundRouteLayers)) {
-    window.foundRouteLayers.forEach((layer) => {
+  if (Array.isArray(window.appState.foundRouteLayers)) {
+    window.appState.foundRouteLayers.forEach((layer) => {
       if (!layer) return;
 
       // Изчисти вътрешните слоеве
       if (typeof layer.eachLayer === "function") {
         layer.eachLayer((subLayer) => {
-          if (map.hasLayer(subLayer)) {
-            map.removeLayer(subLayer);
+          if (window.appState.map.hasLayer(subLayer)) {
+            window.appState.map.removeLayer(subLayer);
           }
         });
       }
 
-      if (map.hasLayer(layer)) {
-        map.removeLayer(layer);
+      if (window.appState.map.hasLayer(layer)) {
+        window.appState.map.removeLayer(layer);
       }
     });
-    window.foundRouteLayers = [];
+    window.appState.foundRouteLayers = [];
 
     const resultBox = document.getElementById("route-search-result");
     if (resultBox) {
@@ -58,64 +58,64 @@ window.clearMapHighlights = function () {
   }
 
   // 🧹 Изчистване на всички други слоеве
-  if (window.highlightedRoute) {
-    if (typeof window.highlightedRoute.eachLayer === "function") {
-      window.highlightedRoute.eachLayer((l) => {
-        if (map.hasLayer(l)) map.removeLayer(l);
+  if (window.appState.highlightedRoute) {
+    if (typeof window.appState.highlightedRoute.eachLayer === "function") {
+      window.appState.highlightedRoute.eachLayer((l) => {
+        if (window.appState.map.hasLayer(l)) window.appState.map.removeLayer(l);
       });
     }
-    if (map.hasLayer(window.highlightedRoute)) {
-      map.removeLayer(window.highlightedRoute);
+    if (window.appState.map.hasLayer(window.appState.highlightedRoute)) {
+      window.appState.map.removeLayer(window.appState.highlightedRoute);
     }
-    window.highlightedRoute = null;
+    window.appState.highlightedRoute = null;
   }
 
-  if (window.startMarker && map.hasLayer(window.startMarker)) {
-    map.removeLayer(window.startMarker);
+  if (window.startMarker && window.appState.map.hasLayer(window.startMarker)) {
+    window.appState.map.removeLayer(window.startMarker);
   }
-  if (window.endMarker && map.hasLayer(window.endMarker)) {
-    map.removeLayer(window.endMarker);
+  if (window.endMarker && window.appState.map.hasLayer(window.endMarker)) {
+    window.appState.map.removeLayer(window.endMarker);
   }
 
-  if (Array.isArray(window.searchMarkers)) {
-    window.searchMarkers.forEach((m) => {
-      if (map.hasLayer(m)) map.removeLayer(m);
+  if (Array.isArray(window.appState.searchMarkers)) {
+    window.appState.searchMarkers.forEach((m) => {
+      if (window.appState.map.hasLayer(m)) window.appState.map.removeLayer(m);
     });
-    window.searchMarkers = [];
+    window.appState.searchMarkers = [];
   }
 
-  if (Array.isArray(window.highlightedStopMarkers)) {
-    window.highlightedStopMarkers.forEach((m) => {
-      if (map.hasLayer(m)) map.removeLayer(m);
+  if (Array.isArray(window.appState.highlightedStopMarkers)) {
+    window.appState.highlightedStopMarkers.forEach((m) => {
+      if (window.appState.map.hasLayer(m)) window.appState.map.removeLayer(m);
     });
-    window.highlightedStopMarkers = [];
+    window.appState.highlightedStopMarkers = [];
   }
 
-  if (window.highlightedStopLayerGroup) {
-    window.highlightedStopLayerGroup.clearLayers();
+  if (window.appState.highlightedStopLayerGroup) {
+    window.appState.highlightedStopLayerGroup.clearLayers();
   }
 
   // ⚙️ Възстанови стиловете на спирките
-  if (Array.isArray(window.allStopMarkers)) {
-    window.allStopMarkers.forEach((m) => {
+  if (Array.isArray(window.appState.allStopMarkers)) {
+    window.appState.allStopMarkers.forEach((m) => {
       m.setStyle({
         color: "#343a40",
-        weight: window.debugSettings.pointSize,
+        weight: window.appState.debugSettings.pointSize,
       });
     });
   }
 
   window.startMarker = null;
   window.endMarker = null;
-  window.selectedRouteLabel = "";
+  window.appState.selectedRouteLabel = "";
   window.updateDynamicLegend?.([]);
 };
 
 window.updateDynamicLegend = (routeColorPairs) => {
   const legendRoutes = document.getElementById("legend-routes");
   if (!legendRoutes) return;
-  const selected = window.selectedRouteLabel
-    ? `<div style="margin-bottom:4px;"><strong style="color:#004aad;">✅ ${window.selectedRouteLabel}</strong></div>`
+  const selected = window.appState.selectedRouteLabel
+    ? `<div style="margin-bottom:4px;"><strong style="color:#004aad;">✅ ${window.appState.selectedRouteLabel}</strong></div>`
     : "";
   const hoverList = routeColorPairs
     .map(
@@ -127,4 +127,14 @@ window.updateDynamicLegend = (routeColorPairs) => {
     )
     .join("");
   legendRoutes.innerHTML = selected + hoverList;
+};
+
+window.showSchedulePanel = function (encodedHtml) {
+  const panel = document.getElementById("schedule-panel");
+  const content = document.getElementById("schedule-content");
+  if (!panel || !content) return;
+
+  const decodedHtml = decodeURIComponent(encodedHtml);
+  content.innerHTML = decodedHtml;
+  panel.style.display = "block";
 };
