@@ -16,7 +16,7 @@ let currentPopup = null;
 let popupCloseTimeout = null;
 window.searchMarkers = []; // за да изчистим маркерите при всяко търсене
 
-window.hoverLayerGroup = null;
+window.hopartialverLayerGroup = null;
 window.debugSettings = {
   pointSize: 5,
   lineWeight: 4,
