@@ -31,12 +31,10 @@ window.redIcon = new L.Icon({
 });
 
 window.clearMapHighlights = function () {
-  // 🧹 Почисти слоеве от търсене
+  // 🧹 Почисти слоеве от търсене (маршрути)
   if (Array.isArray(window.appState.foundRouteLayers)) {
     window.appState.foundRouteLayers.forEach((layer) => {
       if (!layer) return;
-
-      // Изчисти вътрешните слоеве
       if (typeof layer.eachLayer === "function") {
         layer.eachLayer((subLayer) => {
           if (window.appState.map.hasLayer(subLayer)) {
@@ -44,7 +42,6 @@ window.clearMapHighlights = function () {
           }
         });
       }
-
       if (window.appState.map.hasLayer(layer)) {
         window.appState.map.removeLayer(layer);
       }
@@ -53,15 +50,17 @@ window.clearMapHighlights = function () {
 
     const resultBox = document.getElementById("route-search-result");
     if (resultBox) {
-      resultBox.remove(); // ✔️ Ок
+      resultBox.remove();
     }
   }
 
-  // 🧹 Изчистване на всички други слоеве
+  // 🧹 Изчистване на активни линии
   if (window.appState.highlightedRoute) {
     if (typeof window.appState.highlightedRoute.eachLayer === "function") {
       window.appState.highlightedRoute.eachLayer((l) => {
-        if (window.appState.map.hasLayer(l)) window.appState.map.removeLayer(l);
+        if (window.appState.map.hasLayer(l)) {
+          window.appState.map.removeLayer(l);
+        }
       });
     }
     if (window.appState.map.hasLayer(window.appState.highlightedRoute)) {
@@ -70,6 +69,7 @@ window.clearMapHighlights = function () {
     window.appState.highlightedRoute = null;
   }
 
+  // 🧹 Изчистване на начална/крайна точка
   if (window.startMarker && window.appState.map.hasLayer(window.startMarker)) {
     window.appState.map.removeLayer(window.startMarker);
   }
@@ -77,34 +77,38 @@ window.clearMapHighlights = function () {
     window.appState.map.removeLayer(window.endMarker);
   }
 
+  // 🧹 Изчистване на временни маркери
   if (Array.isArray(window.appState.searchMarkers)) {
     window.appState.searchMarkers.forEach((m) => {
-      if (window.appState.map.hasLayer(m)) window.appState.map.removeLayer(m);
+      if (window.appState.map.hasLayer(m)) {
+        window.appState.map.removeLayer(m);
+      }
     });
     window.appState.searchMarkers = [];
   }
 
+  if (window.appState.highlightedStopLayerGroup) {
+    window.appState.highlightedStopLayerGroup.clearLayers(); // (по желание)
+  }
+
+  // Върни цвета на временно подчертаните спирки (не ги трий!)
   if (Array.isArray(window.appState.highlightedStopMarkers)) {
     window.appState.highlightedStopMarkers.forEach((m) => {
-      if (window.appState.map.hasLayer(m)) window.appState.map.removeLayer(m);
+      if (typeof m.setStyle === "function") {
+        m.setStyle({
+          color: "#343a40",
+          weight: window.appState.debugSettings.pointSize,
+          radius: window.appState.debugSettings.pointSize,
+        }).bringToBack();
+
+        if (m._originalMarker && !window.stopClusterGroup.hasLayer(m._originalMarker)) {
+          window.stopClusterGroup.addLayer(m._originalMarker);
+        }
+      }
     });
-    window.appState.highlightedStopMarkers = [];
-  }
+  } 
 
-  if (window.appState.highlightedStopLayerGroup) {
-    window.appState.highlightedStopLayerGroup.clearLayers();
-  }
-
-  // ⚙️ Възстанови стиловете на спирките
-  if (Array.isArray(window.appState.allStopMarkers)) {
-    window.appState.allStopMarkers.forEach((m) => {
-      m.setStyle({
-        color: "#343a40",
-        weight: window.appState.debugSettings.pointSize,
-      });
-    });
-  }
-
+  // 🧼 Reset state
   window.startMarker = null;
   window.endMarker = null;
   window.appState.selectedRouteLabel = "";

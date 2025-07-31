@@ -1,9 +1,9 @@
 window.registerDomListeners = function () {
   document.getElementById("route-search-form")?.addEventListener("submit", (e) => {
     e.preventDefault();
-    const start = document.getElementById("start-stop").value.trim();
-    const end = document.getElementById("end-stop").value.trim();
-    window.findMatchingRoutes(start, end);
+    const startName = document.getElementById("start-stop").value.trim().toLowerCase();
+    const endName = document.getElementById("end-stop").value.trim().toLowerCase();
+    window.findMatchingRoutes(startName, endName);
   });
 
   document.getElementById("reverse-direction-btn")?.addEventListener("click", () => {

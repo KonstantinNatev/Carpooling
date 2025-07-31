@@ -47,8 +47,8 @@ window.highlightRoute = function (routeId) {
         Math.abs(latlng.lat - lat) < 0.0001 && Math.abs(latlng.lng - lng) < 0.0001
       );
     });
-  
-    matchedMarkers.forEach((marker) => {
+
+    matchedMarkers.forEach((marker) => {    
       marker.setStyle({
         color: "#28a745",
         weight: window.appState.debugSettings.pointSize + 1,
@@ -67,7 +67,9 @@ window.highlightRoute = function (routeId) {
         fillOpacity: marker.options.fillOpacity,
         weight: marker.options.weight,
       });
-  
+
+      newMarker._originalMarker = marker;
+
       newMarker._stopData = marker._stopData;
       newMarker.on("mouseover", (e) => marker.fire("mouseover", e));
       newMarker.on("mouseout", (e) => marker.fire("mouseout", e));

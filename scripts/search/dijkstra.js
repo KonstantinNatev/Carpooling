@@ -1,4 +1,7 @@
 window.findBestRouteWithTransfers = function (startId, endId) {
+  // console.log("🚀 Търсене от", startId, "до", endId);
+  // console.log("Граф:", window.appState.stopGraph);
+
   const distances = new Map(); // Минимално известно разстояние до всяка спирка
   const previous = new Map(); // За проследяване на пътя назад
   const visited = new Set(); // Посетени спирки
@@ -43,7 +46,6 @@ window.findBestRouteWithTransfers = function (startId, endId) {
     }
 
     const neighbors = window.appState.stopGraph.get(currentId) || [];
-    
     for (const neighbor of neighbors) {
       const neighborId = neighbor.stopId;
       const weight = neighbor.weight ?? 1;

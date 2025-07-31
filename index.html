@@ -17,101 +17,45 @@
   <link rel="stylesheet" href="./templates/schedule/scheduleTemplate.styles.css" />
   <link rel="stylesheet" href="./templates/popUp/popUpTemplate.styles.css" />
   <link rel="stylesheet" href="./index.styles.css" />
-
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-    }
-    #map {
-      height: 100%;
-      width: 100%;
-    }
-    .highlight-route {
-      color: #007bff;
-      text-decoration: underline;
-      cursor: pointer;
-    }
-    .leaflet-popup-content {
-      font-family: system-ui, sans-serif;
-      font-size: 14px;
-      line-height: 1.4;
-    }
-    .popup-route {
-      margin-bottom: 0.75em;
-      padding: 0.5em;
-      border-left: 3px solid #007bff;
-      background: #f7f9fc;
-      border-radius: 4px;
-    }
-    .popup-route b {
-      color: #333;
-    }
-    .highlight-route:hover {
-      text-decoration: underline;
-      color: #0056b3;
-    }
-    hr {
-      border: none;
-      border-top: 1px solid #ccc;
-      margin: 0.75em 0;
-    }
-  </style>
 </head>
 
 <body>
+  <!-- 🗺️ Основна карта -->
   <div id="map"></div>
 
+  <!-- 📅 Панел с разписания -->
   <div id="schedule-panel" class="schedule-panel">
-    <button onclick="document.getElementById('schedule-panel').style.display='none'" class="schedule-close-btn" aria-label="Close">✖</button>
+    <button onclick="document.getElementById('schedule-panel').style.display='none'" class="schedule-close-btn" aria-label="Затвори">✖</button>
     <h2 class="schedule-title">Разписание</h2>
     <div id="schedule-content" class="schedule-content"></div>
   </div>
-  
 
-  <div id="filter-panel" style="
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: white;
-    padding: 12px;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-    z-index: 1001;
-    font-family: sans-serif;
-    width: 220px;
-    font-size: 14px;
-  ">
-    <strong style="display: block; margin-bottom: 8px;">Филтрирай по тип маршрут:</strong>
-    <div style="margin-bottom: 10px;">
-      <label style="display:block; margin-bottom: 6px;">
-        <input type="checkbox" class="route-type" value="tram" checked /> 🚋 Трамвай
-      </label>
-      <label style="display:block; margin-bottom: 6px;">
-        <input type="checkbox" class="route-type" value="trolleybus" checked /> 🚎 Тролейбус
-      </label>
-      <label style="display:block;">
-        <input type="checkbox" class="route-type" value="bus" checked /> 🚌 Автобус
-      </label>
+  <!-- 🔘 Филтър панел -->
+  <div id="filter-panel">
+    <strong>Филтрирай по тип маршрут:</strong>
+    <div>
+      <label><input type="checkbox" class="route-type" value="tram" checked /> 🚋 Трамвай</label>
+      <label><input type="checkbox" class="route-type" value="trolleybus" checked /> 🚎 Тролейбус</label>
+      <label><input type="checkbox" class="route-type" value="bus" checked /> 🚌 Автобус</label>
     </div>
   </div>
 
-  <div id="debug-panel" style="position: absolute; top: 30%; right: 20px; z-index: 10000; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); padding: 16px 14px; width: 220px; font-family: 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.5;">
-    <h3 style="margin-top: 0; font-size: 15px; color: #333; margin-bottom: 12px">⚙️ Настройки</h3>
+  <!-- ⚙️ Панел с настройки -->
+  <div id="debug-panel">
+    <h3>⚙️ Настройки</h3>
+    <label for="pointSizeInput">Размер на спирките:</label>
+    <input type="number" id="pointSizeInput" value="5" min="1" max="20" />
 
-    <label for="pointSizeInput" style="display: block; margin-bottom: 6px">Размер на спирките:</label>
-    <input type="number" id="pointSizeInput" value="5" min="1" max="20" style="width: 90%; padding: 6px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 4px;" />
+    <label for="lineWeightInput">Дебелина на маршрут:</label>
+    <input type="number" id="lineWeightInput" value="2" min="1" max="10" />
 
-    <label for="lineWeightInput" style="display: block; margin-bottom: 6px">Дебелина на маршрут:</label>
-    <input type="number" id="lineWeightInput" value="2" min="1" max="10" style="width: 90%; padding: 6px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 4px;" />
+    <label for="highlightWeightInput">Дебелина на избран маршрут:</label>
+    <input type="number" id="highlightWeightInput" value="6" min="1" max="15" />
 
-    <label for="highlightWeightInput" style="display: block; margin-bottom: 6px">Дебелина на избран маршрут:</label>
-    <input type="number" id="highlightWeightInput" value="6" min="1" max="15" style="width: 90%; padding: 6px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 4px;" />
-
-    <button id="applySettingsBtn" style="width: 100%; padding: 8px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">Приложи</button>
+    <button id="applySettingsBtn">Приложи</button>
   </div>
 
-
+  <!-- 📋 Инфо панел с табове -->
   <div id="info-panel" class="info-panel">
     <div id="info-panel-toggle" class="info-panel-toggle">
       <button id="expand-info-btn" aria-label="Превключи панела">⬆️</button>
@@ -124,84 +68,40 @@
       </div>
     </div>
 
-
-
     <div class="info-panel-content">
       <div id="tab-stop" class="tab-content active">
         <h4 id="stop-name">Име на спирка</h4>
-        <div id="stop-info-content" class="stop-panel-content">
-          <!-- динамично съдържание за спирка -->
-        </div>
+        <div id="stop-info-content" class="stop-panel-content"></div>
       </div>
+
       <div id="tab-extra" class="tab-content">
         <h4 class="route-search-title">🔍 Търсене на маршрут</h4>
-      
-        <form id="route-search-form" class="route-search-form" aria-label="Форма за търсене на маршрут">
+        <form id="route-search-form" class="route-search-form">
           <div class="form-group">
             <label for="start-stop" class="form-label">Начална спирка</label>
-            <input
-              type="text"
-              id="start-stop"
-              class="form-input"
-              placeholder="напр. Орлов мост"
-              autocomplete="off"
-              aria-describedby="start-stop-help"
-              value="Ж.К. ОВЧА КУПЕЛ-2"
-            />
+            <input type="text" id="start-stop" class="form-input" placeholder="напр. Орлов мост" value="Ж.К. ОВЧА КУПЕЛ-2" />
           </div>
-        
           <div class="form-group">
             <label for="end-stop" class="form-label">Крайна спирка</label>
-            <input
-              type="text"
-              id="end-stop"
-              class="form-input"
-              placeholder="напр. Централна гара"
-              autocomplete="off"
-              aria-describedby="end-stop-help"
-              value="УЛ. ДАМЯНИЦА"
-            />
+            <input type="text" id="end-stop" class="form-input" placeholder="напр. Централна гара" value="УЛ. ДАМЯНИЦА" />
           </div>
-        
           <div class="form-row">
-            <button
-              type="button"
-              id="reverse-direction-btn"
-              class="action-btn secondary reverse-btn flex-1"
-              title="Размени начална и крайна спирка"
-            >
-              🔁 Размени
-            </button>
+            <button type="button" id="reverse-direction-btn" class="action-btn secondary reverse-btn flex-1">🔁 Размени</button>
             <input type="hidden" id="direction-select" value="auto" />
           </div>
-        
           <button type="submit" class="action-btn submit-btn">🔎 Търси маршрут</button>
         </form>
       </div>
-      
-      
-      
     </div>
   </div>
-  
-  
 
-
-
-
-  <!-- Leaflet JS -->
+  <!-- 📦 Скриптове -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-
-  <!-- MarkerCluster JS -->
   <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-
-  <!-- Turf -->
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
-  <!-- Custom Scripts -->
+  <!-- Core -->
   <script src="./scripts/appState.js"></script>
-
-  <!-- Utils -->
   <script src="./utils.js"></script>
 
   <!-- Templates -->
@@ -213,12 +113,12 @@
   <script src="./scripts/data/loadRoutes.js"></script>
   <script src="./scripts/data/buildGraph.js"></script>
 
-  <!-- Map -->
+  <!-- Map Logic -->
   <script src="./scripts/map/initMap.js"></script>
   <script src="./scripts/map/renderMapData.js"></script>
   <script src="./scripts/map/highlightRoute.js"></script>
 
-  <!-- Search / Routing -->
+  <!-- Routing -->
   <script src="./scripts/search/dijkstra.js"></script>
   <script src="./scripts/search/findMatchingRoutes.js"></script>
 
@@ -229,7 +129,7 @@
   <!-- Events -->
   <script src="./scripts/events/domListeners.js"></script>
 
-  <!-- Main entry -->
+  <!-- Entry Point -->
   <script src="./index2.js"></script>
 </body>
 </html>
