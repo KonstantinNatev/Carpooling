@@ -4,6 +4,7 @@ window.registerDomListeners = function () {
     const startName = document.getElementById("start-stop").value.trim().toLowerCase();
     const endName = document.getElementById("end-stop").value.trim().toLowerCase();
     window.findMatchingRoutes(startName, endName);
+    window.bottomSheet?.open?.('half');
   });
 
   document.getElementById("reverse-direction-btn")?.addEventListener("click", () => {
@@ -34,5 +35,18 @@ window.registerDomListeners = function () {
 
   if (window.innerWidth <= 768 && infoPanel) {
     infoPanel.classList.add("collapsed");
+  }
+};
+
+// ако се показва разписание през stopPanel -> отваряме панела
+window.showSchedulePanel = (html) => {
+  const panel = document.getElementById('schedule-panel');
+  if (!panel) return;
+  document.getElementById('schedule-content').innerHTML = decodeURIComponent(html);
+  panel.style.display = 'block';
+  // подсигуряваме видимост и на инфо панела на мобилно:
+  if (window.bottomSheet?.initBottomSheet && window.innerWidth <= 768) {
+    const ip = document.getElementById('info-panel');
+    if (ip) { ip.style.height = '55vh'; ip.classList.add('expanded'); }
   }
 };

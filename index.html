@@ -11,6 +11,13 @@
   <!-- MarkerCluster CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+ 
+<!-- Inter font (вариативен) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Custom CSS -->
   <link rel="stylesheet" href="./templates/legend/legendTemplate.styles.css" />
@@ -56,11 +63,9 @@
   </div>
 
   <!-- 📋 Инфо панел с табове -->
-  <div id="info-panel" class="info-panel">
-    <div id="info-panel-toggle" class="info-panel-toggle">
-      <button id="expand-info-btn" aria-label="Превключи панела">⬆️</button>
-    </div>
-    <div class="info-panel-header">
+  <div id="info-panel" class="info-panel spark-sheet" data-level="peek">
+    <div class="spark-sheet-handle"></div>
+    <div class="tabs-header spark-sheet-header">
       <h3>Панел с табове</h3>
       <div class="tab-nav">
         <button class="tab-btn active" data-tab="tab-stop">🛑 Спирка</button>
@@ -68,7 +73,7 @@
       </div>
     </div>
 
-    <div class="info-panel-content">
+    <div class="info-panel-content spark-sheet-content" id="tab-content">
       <div id="tab-stop" class="tab-content active">
         <h4 id="stop-name">Име на спирка</h4>
         <div id="stop-info-content" class="stop-panel-content"></div>
@@ -115,6 +120,7 @@
 
   <!-- Map Logic -->
   <script src="./scripts/map/initMap.js"></script>
+  <script src="./scripts/map/hitTest.js"></script>
   <script src="./scripts/map/renderMapData.js"></script>
   <script src="./scripts/map/highlightRoute.js"></script>
 
@@ -123,6 +129,7 @@
   <script src="./scripts/search/findMatchingRoutes.js"></script>
 
   <!-- UI -->
+   <script src="./scripts/ui/bottomSheet.js"></script>
   <script src="./scripts/ui/stopPanel.js"></script>
   <script src="./scripts/ui/scheduleHelpers.js"></script>
 
@@ -131,5 +138,16 @@
 
   <!-- Entry Point -->
   <script src="./index2.js"></script>
+  <script>
+    // инициализация на bottom sheet след зареждане
+    window.addEventListener('DOMContentLoaded', () => {
+      window.bottomSheet?.initBottomSheet?.();
+    });
+  </script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      window.bottomSheet?.initBottomSheet?.(document.getElementById('info-panel'));
+    });
+  </script>
 </body>
 </html>

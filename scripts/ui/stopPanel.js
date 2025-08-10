@@ -109,5 +109,15 @@ window.renderStopPanel = function (stop) {
       }
     });
   });
+
+  // в края на renderStopPanel(stop)
+  try {
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    if (isMobile && window.bottomSheet?.currentLevel?.() === 'peek') {
+      window.bottomSheet.open('half');
+    }
+  } catch(e) {
+    console.error("In stopPanel.js", e);
+  }
 };
   

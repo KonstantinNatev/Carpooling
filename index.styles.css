@@ -540,11 +540,121 @@ hr {
   margin-bottom: 16px;
 }
 
+.tap-halo {
+  position: absolute;
+  pointer-events: none;
+  width: 44px;
+  height: 44px;
+  margin-left: -22px;
+  margin-top: -22px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 123, 255, 0.7);
+  box-shadow: 0 0 0 6px rgba(0,123,255,0.15);
+  animation: haloOut 400ms ease-out forwards;
+  z-index: 10000;
+}
+@keyframes haloOut {
+  from { transform: scale(0.8); opacity: 1; }
+  to   { transform: scale(1.15); opacity: 0; }
+}
+
+/* === Bottom sheet handle === */
+.info-panel {
+  transition: height 0.25s ease, transform 0.2s ease;
+}
+.info-panel.dragging {
+  transition: none;
+}
+.sheet-handle {
+  width: 100%;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ns-resize;
+}
+.sheet-handle::before {
+  content: "";
+  width: 48px;
+  height: 4px;
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+
+/* ==== Spark-like Bottom Sheet (без промяна на цветовата ти тема) ======= */
+#info-panel.spark-sheet {
+  background: #fff;
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  box-shadow: 0 -10px 30px rgba(0,0,0,.12);
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  transition: height .22s ease, transform .22s ease, border-radius .22s ease;
+  will-change: height, transform;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: 20px /* handle */ auto /* header */ 1fr /* content */;
+  /* z-index оставяме според твоята система; при нужда разкоментирай: */
+  /* z-index: 1005; */
+}
+
+#info-panel.spark-sheet.dragging { transition: none; }
+
+#info-panel .spark-sheet-handle {
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none; /* важно за iOS – позволяваме наш drag */
+}
+#info-panel .spark-sheet-handle::before {
+  content: "";
+  width: 52px;
+  height: 5px;
+  border-radius: 999px;
+  background: #d1d5db;
+}
+
+#info-panel .spark-sheet-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #fff;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px; /* touch target */
+}
+
+/* Вътрешната скрол зона ТРЯБВА да има min-height:0, иначе не скролва в grid/flex контексти */
+#info-panel .spark-sheet-content{
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-bottom: max(12px, env(safe-area-inset-bottom)); /* да не реже долните елементи */
+  touch-action: pan-y; /* позволи вертикален скрол в iOS */
+}
+
+#info-panel.spark-sheet #tab-content{
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  touch-action: pan-y;
+}
+
+/* Когато влачим дръжката – без транзишъни (по-гладко) */
+#info-panel.spark-sheet.dragging{ transition: none; }
 
 @media (max-width: 768px) {
   #info-panel-toggle {
     display: block;
   }
+
+  #info-panel.spark-sheet { max-height: 90vh; }
 
   .info-panel {
     width: 100vw;
@@ -552,12 +662,13 @@ hr {
     top: auto;
     left: 0;
     border-left: none;
-    border-top: 3px solid #007bff;
     box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.2);
     z-index: 1005;
     transition: height 0.3s ease;
+    max-height: 90vh;
+    bottom: 0;
+    border-top: 3px solid #007bff;
     height: 200px;
-    max-height: 90%;
   }
 
   .info-panel.collapsed {
@@ -722,4 +833,8 @@ hr {
   #filter-panel.mobile-tab-filter {
     display: none !important;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #info-panel.spark-sheet { transition: none; }
 }

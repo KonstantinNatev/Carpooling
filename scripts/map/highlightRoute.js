@@ -48,38 +48,29 @@ window.highlightRoute = function (routeId) {
       );
     });
 
-    matchedMarkers.forEach((marker) => {    
-      marker.setStyle({
-        color: "#28a745",
-        weight: window.appState.debugSettings.pointSize + 1,
-        radius: window.appState.debugSettings.pointSize + 1,
-      });
-  
-      // Клониране за независим слой
-      if (window.stopClusterGroup?.hasLayer(marker)) {
-        window.stopClusterGroup.removeLayer(marker);
-      }
-  
-      const newMarker = L.circleMarker(marker.getLatLng(), {
-        radius: marker.options.radius,
-        color: marker.options.color,
-        fillColor: marker.options.fillColor,
-        fillOpacity: marker.options.fillOpacity,
-        weight: marker.options.weight,
-      });
-
-      newMarker._originalMarker = marker;
-
-      newMarker._stopData = marker._stopData;
-      newMarker.on("mouseover", (e) => marker.fire("mouseover", e));
-      newMarker.on("mouseout", (e) => marker.fire("mouseout", e));
-      newMarker.on("click", (e) => marker.fire("click", e));
-  
-      window.appState.highlightedStopLayerGroup.addLayer(newMarker);
-      window.appState.highlightedStopMarkers.push(newMarker);
+// 1) стил за оригиналните маркери (без да ги вадим от кластер)
+  const basePoint = window.appState.debugSettings?.pointSize || 5;
+  matchedMarkers.forEach((marker) => {
+    marker.setStyle({
+      color: "#28a745",
+      weight: basePoint + 1,
+      radius: basePoint + 1,
     });
-  
-    window.appState.highlightedStopMarkers.forEach((m) => m.bringToFront());
+  });
+
+  // 2) лек halo overlay (само във временния group)
+  matchedMarkers.forEach((marker) => {
+    const c = L.circle(marker.getLatLng(), {
+      radius: 22, // в метри (динамичен ефект спрямо zoom не е критичен)
+      color: "#28a745",
+      weight: 2,
+      opacity: 0.4,
+      fillColor: "#28a745",
+      fillOpacity: 0.08,
+      interactive: false,
+    });
+    window.appState.highlightedStopLayerGroup.addLayer(c);
+  });
   
     window.appState.highlightedRoute.on("click", () => {
       window.clearMapHighlights();
