@@ -3,6 +3,8 @@ window.loadAllScrapedRoutes = async function () {
     console.log("res",res);
     
     const files = await res.json();
+    console.log("files",files);
+
     const allStops = [];
     const allRoutes = [];
   
