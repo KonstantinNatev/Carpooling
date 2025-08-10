@@ -25,13 +25,6 @@ window.registerDomListeners = function () {
   });
 
   const infoPanel = document.getElementById("info-panel");
-  const expandBtn = document.getElementById("expand-info-btn");
-  expandBtn?.addEventListener("click", () => {
-    const isCollapsed = infoPanel.classList.contains("collapsed");
-    infoPanel.classList.toggle("collapsed", !isCollapsed);
-    infoPanel.classList.toggle("expanded", isCollapsed);
-    expandBtn.textContent = isCollapsed ? "⬇️" : "⬆️";
-  });
 
   if (window.innerWidth <= 768 && infoPanel) {
     infoPanel.classList.add("collapsed");
