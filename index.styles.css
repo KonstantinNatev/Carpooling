@@ -1,3 +1,107 @@
+/* === [ОБЩИ СТИЛОВЕ] === */
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+/* === [СТИЛ ЗА КАРТАТА] === */
+#map {
+  height: 100%;
+  width: 100%;
+}
+
+/* === [СТИЛ ЗА POPUP МАРШРУТИ] === */
+.highlight-route {
+  color: #007bff;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.highlight-route:hover {
+  text-decoration: underline;
+  color: #0056b3;
+}
+.leaflet-popup-content {
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.popup-route {
+  margin-bottom: 0.75em;
+  padding: 0.5em;
+  border-left: 3px solid #007bff;
+  background: #f7f9fc;
+  border-radius: 4px;
+}
+.popup-route b {
+  color: #333;
+}
+
+/* === [СТИЛ ЗА ХОРИЗОНТАЛНИ ЛИНИИ] === */
+hr {
+  border: none;
+  border-top: 1px solid #ccc;
+  margin: 0.75em 0;
+}
+
+/* === [СТИЛ ЗА ПАНЕЛ ФИЛТРИ] === */
+#filter-panel {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 1001;
+  font-family: sans-serif;
+  width: 220px;
+  font-size: 14px;
+}
+
+/* === [СТИЛ ЗА ДЕБЪГ ПАНЕЛ] === */
+#debug-panel {
+  position: absolute;
+  top: 30%;
+  right: 20px;
+  z-index: 10000;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  padding: 16px 14px;
+  width: 220px;
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+#debug-panel h3 {
+  margin-top: 0;
+  font-size: 15px;
+  color: #333;
+  margin-bottom: 12px;
+}
+#debug-panel label {
+  display: block;
+  margin-bottom: 6px;
+}
+#debug-panel input {
+  width: 90%;
+  padding: 6px;
+  margin-bottom: 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+#applySettingsBtn {
+  width: 100%;
+  padding: 8px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
 .stop-panel {
   position: fixed;
   top: 0;
@@ -436,11 +540,121 @@
   margin-bottom: 16px;
 }
 
+.tap-halo {
+  position: absolute;
+  pointer-events: none;
+  width: 44px;
+  height: 44px;
+  margin-left: -22px;
+  margin-top: -22px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 123, 255, 0.7);
+  box-shadow: 0 0 0 6px rgba(0,123,255,0.15);
+  animation: haloOut 400ms ease-out forwards;
+  z-index: 10000;
+}
+@keyframes haloOut {
+  from { transform: scale(0.8); opacity: 1; }
+  to   { transform: scale(1.15); opacity: 0; }
+}
+
+/* === Bottom sheet handle === */
+.info-panel {
+  transition: height 0.25s ease, transform 0.2s ease;
+}
+.info-panel.dragging {
+  transition: none;
+}
+.sheet-handle {
+  width: 100%;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ns-resize;
+}
+.sheet-handle::before {
+  content: "";
+  width: 48px;
+  height: 4px;
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+
+/* ==== Spark-like Bottom Sheet (без промяна на цветовата ти тема) ======= */
+#info-panel.spark-sheet {
+  background: #fff;
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  box-shadow: 0 -10px 30px rgba(0,0,0,.12);
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  transition: height .22s ease, transform .22s ease, border-radius .22s ease;
+  will-change: height, transform;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: 20px /* handle */ auto /* header */ 1fr /* content */;
+  /* z-index оставяме според твоята система; при нужда разкоментирай: */
+  /* z-index: 1005; */
+}
+
+#info-panel.spark-sheet.dragging { transition: none; }
+
+#info-panel .spark-sheet-handle {
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none; /* важно за iOS – позволяваме наш drag */
+}
+#info-panel .spark-sheet-handle::before {
+  content: "";
+  width: 52px;
+  height: 5px;
+  border-radius: 999px;
+  background: #d1d5db;
+}
+
+#info-panel .spark-sheet-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #fff;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px; /* touch target */
+}
+
+/* Вътрешната скрол зона ТРЯБВА да има min-height:0, иначе не скролва в grid/flex контексти */
+#info-panel .spark-sheet-content{
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-bottom: max(12px, env(safe-area-inset-bottom)); /* да не реже долните елементи */
+  touch-action: pan-y; /* позволи вертикален скрол в iOS */
+}
+
+#info-panel.spark-sheet #tab-content{
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  touch-action: pan-y;
+}
+
+/* Когато влачим дръжката – без транзишъни (по-гладко) */
+#info-panel.spark-sheet.dragging{ transition: none; }
 
 @media (max-width: 768px) {
   #info-panel-toggle {
     display: block;
   }
+
+  #info-panel.spark-sheet { max-height: 90vh; }
 
   .info-panel {
     width: 100vw;
@@ -448,13 +662,13 @@
     top: auto;
     left: 0;
     border-left: none;
-    border-top: 3px solid #007bff;
     box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.2);
     z-index: 1005;
     transition: height 0.3s ease;
-    height: 200px;
     max-height: 90vh;
-    overflow-y: auto;
+    bottom: 0;
+    border-top: 3px solid #007bff;
+    height: 200px;
   }
 
   .info-panel.collapsed {
@@ -462,7 +676,7 @@
   }
 
   .info-panel.expanded {
-    height: 90vh;
+    height: 90%;
   }
 
   .info-panel-toggle {
@@ -471,6 +685,21 @@
     padding: 6px;
     border-bottom: 1px solid #ddd;
   }
+
+  .info-panel-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  
+  .tab-content {
+    flex: 0 0 auto;
+  }
+  
+  #tab-extra {
+    flex: 1 1 auto;
+    overflow-y: auto;
+  }  
 
   #expand-info-btn {
     font-size: 18px;
@@ -604,4 +833,8 @@
   #filter-panel.mobile-tab-filter {
     display: none !important;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #info-panel.spark-sheet { transition: none; }
 }
