@@ -1,5 +1,5 @@
 window.loadAllScrapedRoutes = async function () {
-    const res = await fetch("../../schedules/index.json");
+    const res = await fetch("./schedules/index.json",);
     console.log("res",res);
     
     const files = await res.json();
@@ -9,8 +9,8 @@ window.loadAllScrapedRoutes = async function () {
     const allRoutes = [];
   
     for (const file of files) {
-      const data = await fetch(`../../schedules/${file}`).then((r) => r.json());
-      console.log(`../../schedules/${file}`);
+      const data = await fetch(`./schedules/${file}`).then((r) => r.json());
+      console.log(`./schedules/${file}`);
 
       const routes = data.routes || [];
   
