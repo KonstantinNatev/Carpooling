@@ -21,7 +21,41 @@ window.renderMapData = function (data) {
   });
     map.addLayer(stopClusterGroup);
     window.stopClusterGroup = stopClusterGroup;
-  
+
+
+  /* --- Guard срещу селекция при tap върху кластер (mobile) --- */
+  let suppressTapUntil = 0;
+  let isZooming = false;
+  let isSpiderfying = false;
+  let downOnCluster = false;
+
+  const isMobileView = () => window.matchMedia('(max-width: 1024px)').matches;
+
+  // zoom събития
+  map.on('zoomstart', () => { 
+    isZooming = true; 
+    suppressTapUntil = performance.now() + 350; 
+  });
+  map.on('zoomend', () => { isZooming = false; });
+
+  // MarkerCluster събития
+  stopClusterGroup.on('clusterclick', () => { 
+    // не override-ваме поведението – само супресираме селекцията
+    suppressTapUntil = performance.now() + 350; 
+  });
+  stopClusterGroup.on('spiderfied', () => { 
+    isSpiderfying = true; 
+    suppressTapUntil = performance.now() + 350; 
+  });
+  stopClusterGroup.on('unspiderfied', () => { isSpiderfying = false; });
+  stopClusterGroup.on('animationend', () => { suppressTapUntil = performance.now() + 150; });
+
+  // слушатели на контейнера – за да знаем дали down е върху кластер
+  const mapContainer = map.getContainer();
+  mapContainer.addEventListener('pointerdown', (e) => {
+    downOnCluster = !!(e.target && e.target.closest && e.target.closest('.marker-cluster'));
+  }, { passive: true });
+
     const basePoint = window.appState.debugSettings?.pointSize || 5;
     const pointSize = isMobile ? Math.max(basePoint + 2, 7) : basePoint;
     window.appState.allStopMarkers = [];
@@ -92,13 +126,18 @@ window.renderMapData = function (data) {
       });
   
       marker.on("click", () => {
-        // на десктоп позволяваме директен click върху маркер
-        if (!isMobile) {
-          window.clearMapHighlights();
-          window.renderStopPanel(marker._stopData);
-          document.querySelector('[data-tab="tab-stop"]').click();
+        // На мобилно игнорирай клик, ако току-що е имало clusterclick/zoom/spiderfy
+        if (isMobileView()) {
+          const now = performance.now();
+          if (now < suppressTapUntil || isZooming || isSpiderfying) {
+            return;
+          }
         }
+        window.clearMapHighlights();
+        window.renderStopPanel(marker._stopData);
+        document.querySelector('[data-tab="tab-stop"]').click();
       });
+
   
       stopClusterGroup.addLayer(marker);
     });
@@ -161,25 +200,49 @@ window.renderMapData = function (data) {
     return z >= 16 ? 20 : 26; // px
   }
 
-  // guard за tap vs pan  визуален halo
+  // === Tap guard + кластер гард ===
   let downPt = null;
   const container = map.getContainer();
 
   container.addEventListener('pointerdown', (e) => {
     downPt = { x: e.clientX, y: e.clientY, t: performance.now() };
+    // запомни дали тапът започна върху кластер балон
+    downOnCluster = !!(e.target && e.target.closest && e.target.closest('.marker-cluster'));
+  }, { passive: true });
+
+  container.addEventListener('pointercancel', () => {
+    downPt = null;
+    downOnCluster = false;
   }, { passive: true });
 
   container.addEventListener('pointerup', (e) => {
-    if (!isMobile) return; // само на мобилно ползваме централизирания tap
+    // работим мобилно/таблет; на десктоп селекцията идва от click на маркера
+    if (!isMobileView()) return;
     if (!downPt) return;
+
     const dx = e.clientX - downPt.x;
     const dy = e.clientY - downPt.y;
     const dt = performance.now() - downPt.t;
     const moved = Math.hypot(dx, dy) > 8;
     const longPress = dt >= 350;
-    downPt = null;
-    if (moved) return; // pan/drag → игнорирай
 
+    const now = performance.now();
+    const upOnCluster = !!(e.target && e.target.closest && e.target.closest('.marker-cluster'));
+
+    // ⛔️ Критичен гард: ако тапваме върху кластер или тече zoom/spiderfy → НЕ селектираме
+    if (downOnCluster || upOnCluster || now < suppressTapUntil || isZooming || isSpiderfying) {
+      downPt = null;
+      downOnCluster = false;
+      return;
+    }
+
+    downPt = null;
+    downOnCluster = false;
+
+    if (moved) return;     // pan/drag
+    if (longPress) return; // бъдещ контекст
+
+    // продължаваме с hitTest едва след гардовете
     const rect = container.getBoundingClientRect();
     const cx = e.clientX - rect.left;
     const cy = e.clientY - rect.top;
@@ -192,11 +255,6 @@ window.renderMapData = function (data) {
     halo.style.top = `${cy}px`;
     container.appendChild(halo);
     setTimeout(() => halo.remove(), 420);
-
-    if (longPress) {
-      // бъдещ контекст: „линии наблизо“ и т.н.
-      return;
-    }
 
     const marker = index.queryNearest(ll, map, adaptivePxTolerance());
     if (marker) {
