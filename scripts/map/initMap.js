@@ -6,6 +6,7 @@ window.initMap = function () {
     tapTolerance: isMobile ? 20 : 15,
     zoomControl: true,
     inertia: true,
+    maxZoom: 21,
   }).setView([42.6977, 23.3219], 13);
 
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {

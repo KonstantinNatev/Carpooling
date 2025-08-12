@@ -16,7 +16,9 @@ window.renderMapData = function (data) {
     window.appState.geoLayer = geoLayer;
   
   const stopClusterGroup = L.markerClusterGroup({
-    disableClusteringAtZoom: isMobile ? 17 : 18,
+    disableClusteringAtZoom: 19,
+    zoomToBoundsOnClick: true,
+    spiderfyOnMaxZoom: false,
     spiderfyDistanceMultiplier: isMobile ? 0.7 : 1.0,
   });
     map.addLayer(stopClusterGroup);
